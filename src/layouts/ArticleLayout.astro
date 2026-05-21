@@ -20,7 +20,14 @@ const coverSrc = cover
   : undefined;
 ---
 
-<BaseLayout title={title} description={description} ogImage={cover}>
+<BaseLayout
+  title={title}
+  description={description}
+  ogImage={cover}
+  ogImageAlt={coverAlt}
+  ogType="article"
+  publishedTime={date.toISOString()}
+>
   <article>
     <header class="article-header reading">
       <p class="kicker">

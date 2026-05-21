@@ -1,50 +1,29 @@
 ---
 title: "Women in space"
-description: "A chart providing insights into the history of women that travelled into space."
+description: "An interactive chart providing insights into the history of women that travelled into space."
 date: 2021-03-01
 cover: "/images/womenspace.png"
 coverAlt: "An image of a scatterplot of all women that travelled to space up to 2021"
-tags: ["meta", "data viz"]
 ---
 
 <figure class="viz-wide">
 <iframe width="100%" height="683" frameborder="0"
   src="https://observablehq.com/embed/@ralucanicola/women-in-space?cells=svg"></iframe>
 </figure>
-{/* 
-import PlotChart from '~/components/viz/PlotChart.astro';
-import MapView from '~/components/viz/MapView.astro';
 
-export const base = import.meta.env.BASE_URL;
-
-This is the first article on the site. The idea is to write short things and
-embed the occasional **chart** or **map** when they make a point better than a
-paragraph would.
-
-## A sample chart
-
-Below is a tiny Observable Plot chart, rendered client-side. The data is generated
-in `public/article-scripts/hello-data.js` — usually I'd load it from a JSON file
-under `public/data/` by passing `dataUrl` to `PlotChart`.
-
-<PlotChart id="rain-2024" height={320} caption="Demo: monthly precipitation (mm), made-up numbers." />
-
-<script src={`${base}/article-scripts/hello-data.js`} is:inline defer></script>
-
-## A sample map
-
-A MapLibre map centered on Zürich, with the default demo basemap. Swap in your
-own style URL (MapTiler, Mapbox, Protomaps) and a GeoJSON file under
-`public/data/` to plot points.
-
-<MapView id="zh-map" lng={8.541} lat={47.376} zoom={11} height={400}
-  caption="Demo basemap — replace styleUrl with your own provider for production." />
-
-## Where the pieces live
-
-- Write articles in `src/content/writings/`.
-- Drop drawings in `src/content/drawings/`.
-- Add images to `public/images/`.
-- Add data files to `public/data/`.
-- Article-specific JS (chart spec functions) goes in `public/article-scripts/`.
-- Toggle the theme using the moon/sun icon in the nav. */}
+<p>
+For <a href='https://next.observablehq.com/@observablehq/womens-history-month-dataviz-contest' target='_blank'>Women's History Month DataViz Contest</a> 
+I wanted to create a chart that provides small insights into the history of women that travelled to space. 
+This chart shows the 65 women with completed spaceflights. As a comparison, there are around 500 men that travelled to space until now, 
+but this chart is not about a comparison between women and men. It's about looking at these 65 women spacefarers and admiring their amazing accomplishments. 
+</p>
+<p>
+<a href="https://en.wikipedia.org/wiki/Valentina_Tereshkova">Valentina Tereshkova</a> is the first woman in space, only two years after the first flight 
+into space by cosmonaut <a href="https://en.wikipedia.org/wiki/Yuri_Gagarin">Yuri Gagarin</a> in 1961. She is also the youngest woman in space, at only 26 years old. 
+It's interesting that 19 years separated the first and second woman in space. And even though the first two women in space were Russian, there were only four women 
+of Russian nationality to fly in space until today.
+</p>
+<p>
+Most women have ages between 30 and 45 on their first mission into space. <a href="https://en.wikipedia.org/wiki/Barbara_Morgan">Barbara Morgan</a>, a teacher and 
+an astronaut, travelled for the first time in space as a participant in the Teacher in Space program, when she was 55 years old.
+</p>

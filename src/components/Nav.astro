@@ -12,7 +12,6 @@ function link(path: string) {
 const home = link('/');
 const dataViz = link('/data-visualization');
 const drawings = link('/drawings');
-const about = link('/about');
 
 const logo = `${base}/globe.svg`.replace(/\/+/g, '/');
 ---
@@ -27,7 +26,6 @@ const logo = `${base}/globe.svg`.replace(/\/+/g, '/');
       <ul>
         <li><a href={dataViz.href} class:list={[{ active: dataViz.active }]}>Data visualization</a></li>
         <li><a href={drawings.href} class:list={[{ active: drawings.active }]}>Drawings</a></li>
-        <li><a href={about.href} class:list={[{ active: about.active }]}>About</a></li>
       </ul>
     </nav>
     <ThemeToggle />
@@ -72,6 +70,8 @@ const logo = `${base}/globe.svg`.replace(/\/+/g, '/');
     margin: 0;
     padding: 0;
     list-style: none;
+    text-align: center;
+    align-items: center;
   }
   nav a {
     color: var(--text-muted);

@@ -1,0 +1,112 @@
+---
+import BaseLayout from './BaseLayout.astro';
+
+interface Props {
+  title: string;
+  description: string;
+  date: Date;
+  cover?: string;
+  coverAlt?: string;
+  section: 'data-visualization' | 'drawings';
+  tags?: string[];
+}
+
+const { title, description, date, cover, coverAlt, section, tags = [] } = Astro.props;
+const dateLabel = date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+const base = import.meta.env.BASE_URL;
+const indexHref = (base + '/' + section).replace(/\/+/g, '/');
+const coverSrc = cover
+  ? (cover.startsWith('http') ? cover : (base + cover).replace(/\/+/g, '/'))
+  : undefined;
+---
+
+<BaseLayout title={title} description={description} ogImage={cover}>
+  <article>
+    <header class="article-header reading">
+      <p class="kicker">
+        <a href={indexHref}>{section === 'data-visualization' ? 'Data visualization' : 'Drawings'}</a>
+        <span aria-hidden="true">·</span>
+        <time datetime={date.toISOString()}>{dateLabel}</time>
+      </p>
+      <h1>{title}</h1>
+      <p class="description">{description}</p>
+      {tags.length > 0 && (
+        <ul class="tags" aria-label="Tags">
+          {tags.map((t) => <li>#{t}</li>)}
+        </ul>
+      )}
+    </header>
+
+    <!-- {coverSrc && (
+      <figure class="cover">
+        <img src={coverSrc} alt={coverAlt ?? ''} />
+      </figure>
+    )} -->
+
+    <div class="article-body reading">
+      <slot />
+    </div>
+  </article>
+
+  <style>
+    .article-header { padding-top: 1rem; }
+    .kicker {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    .kicker a { color: var(--accent); }
+    .description {
+      font-size: 1.1rem;
+      color: var(--text-muted);
+    }
+    .tags {
+      list-style: none;
+      padding: 0;
+      margin: 0.5rem 0 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+    .cover {
+      max-width: 64rem;
+      margin: 2rem auto;
+      padding: 0 1.25rem;
+    }
+    .cover img {
+      max-width: 100%;
+      max-height: 600px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      margin: 0 auto;
+    }
+    .article-body { margin-top: 2rem; }
+    .article-body :global(h2) { margin-top: 2rem; }
+    .article-body :global(figure) { margin: 2rem 0; }
+    .article-body :global(figcaption) {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      text-align: center;
+      margin-top: 0.4rem;
+    }
+    .article-body :global(blockquote) {
+      border-left: 3px solid var(--accent);
+      margin: 1.5rem 0;
+      padding: 0.2rem 0 0.2rem 1rem;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+    /* Let viz components break out of the reading-width container. */
+    .article-body :global(.viz-wide) {
+      width: min(64rem, 90vw);
+      margin-left: 50%;
+      transform: translateX(-50%);
+    }
+  </style>
+</BaseLayout>

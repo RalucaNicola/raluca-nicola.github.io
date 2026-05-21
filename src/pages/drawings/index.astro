@@ -1,0 +1,41 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import Grid from '~/components/Grid.astro';
+import ArticleCard from '~/components/ArticleCard.astro';
+
+const base = import.meta.env.BASE_URL;
+const entries = (await getCollection('drawings', ({ data }) => !data.draft))
+  .sort((a, b) => +b.data.date - +a.data.date);
+
+const href = (id: string) => (base + '/drawings/' + id).replace(/\/+/g, '/');
+---
+
+<BaseLayout title="Drawings" description="Sketches and visual experiments.">
+  <section class="container">
+    <header class="page-header">
+      <h1>Drawings</h1>
+      <p>Sketches, doodles, and visual experiments.</p>
+    </header>
+    <Grid>
+      {entries.map((e) => (
+        <ArticleCard
+          href={href(e.id)}
+          title={e.data.title}
+          description={e.data.description}
+          date={e.data.date}
+          cover={e.data.cover}
+          coverAlt={e.data.coverAlt}
+          section="drawings"
+        />
+      ))}
+    </Grid>
+    {entries.length === 0 && <p class="empty">No drawings yet.</p>}
+  </section>
+
+  <style>
+    .page-header { margin-bottom: 1.5rem; }
+    .page-header p { color: var(--text-muted); }
+    .empty { color: var(--text-muted); }
+  </style>
+</BaseLayout>

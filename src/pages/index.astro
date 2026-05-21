@@ -1,0 +1,54 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import Grid from '~/components/Grid.astro';
+import ArticleCard from '~/components/ArticleCard.astro';
+
+const base = import.meta.env.BASE_URL;
+
+type Section = 'data-visualization' | 'drawings';
+
+async function loadSection<S extends Section>(section: S) {
+  const entries = await getCollection(section, ({ data }) => !data.draft);
+  return entries.map((e) => ({ ...e, section }));
+}
+
+const all = (await Promise.all([
+  loadSection('data-visualization'),
+  loadSection('drawings'),
+])).flat();
+
+all.sort((a, b) => +b.data.date - +a.data.date);
+
+function articleHref(section: Section, id: string) {
+  return (base + '/' + section + '/' + id).replace(/\/+/g, '/');
+}
+---
+
+<BaseLayout title="Personal Site" description="Writings and drawings.">
+  <section class="container intro">
+    <h2>Hey there, I'm Raluca!</h2> 
+    <p>I like to <a href={`${base}/data-visualization`}>write</a> about data visualization, mostly geodata and mostly on the web. A few years back I fell in love with watercolor, so I also added a <a href={`${base}/drawings`}>drawings</a> section.</p>
+  </section>
+
+  <section class="container">
+    <Grid>
+      {all.map((entry) => (
+        <ArticleCard
+          href={articleHref(entry.section, entry.id)}
+          title={entry.data.title}
+          description={entry.data.description}
+          date={entry.data.date}
+          cover={entry.data.cover}
+          coverAlt={entry.data.coverAlt}
+          section={entry.section}
+        />
+      ))}
+    </Grid>
+  </section>
+
+  <style>
+    .intro { margin-bottom: 2rem; }
+    .intro p { color: var(--text-muted); font-size: 1.1rem; }
+  </style>
+</BaseLayout>

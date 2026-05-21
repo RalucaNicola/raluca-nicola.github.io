@@ -1,0 +1,103 @@
+---
+// Observable Plot chart island.
+//
+// In an MDX article, register a render function:
+//
+//   <script is:inline>
+//     window.registerPlot('my-id', (Plot, data, { width, height }) => Plot.plot({
+//       width, height, marks: [Plot.barY(data, { x: 'month', y: 'mm' })],
+//     }));
+//   </script>
+//
+// The function receives Plot, the loaded data (if `dataUrl` was set), and
+// the host's measured width/height. It MUST return a DOM node (the result of
+// Plot.plot(...)).
+
+interface Props {
+  id: string;
+  dataUrl?: string;
+  height?: number;
+  caption?: string;
+}
+
+const { id, dataUrl, height = 360, caption } = Astro.props;
+const base = import.meta.env.BASE_URL;
+const resolvedUrl = dataUrl
+  ? (dataUrl.startsWith('http') ? dataUrl : (base + dataUrl).replace(/\/+/g, '/'))
+  : undefined;
+---
+
+<figure class="viz-wide">
+  <div
+    class="plot-host"
+    id={id}
+    data-data-url={resolvedUrl}
+    data-height={height}
+    style={`min-height: ${height}px`}
+  >
+    <noscript>This chart requires JavaScript.</noscript>
+  </div>
+  {caption && <figcaption>{caption}</figcaption>}
+</figure>
+
+<style>
+  .plot-host {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem;
+  }
+  .plot-host :global(svg) { background: transparent; max-width: 100%; height: auto; }
+  .plot-host :global(text) { fill: var(--text); }
+  .plot-host :global(.tick line) { stroke: var(--border); }
+  .plot-host :global(.domain) { stroke: var(--border); }
+</style>
+
+<script>
+  import * as Plot from '@observablehq/plot';
+
+  type RenderFn = (
+    Plot: typeof import('@observablehq/plot'),
+    data: any,
+    ctx: { width: number; height: number }
+  ) => Node;
+
+  const renderers = new Map<string, RenderFn>();
+  (window as any).Plot = Plot;
+
+  (window as any).registerPlot = (id: string, fn: RenderFn) => {
+    renderers.set(id, fn);
+    const host = document.getElementById(id);
+    if (host) render(host as HTMLElement);
+  };
+
+  async function render(host: HTMLElement) {
+    const fn = renderers.get(host.id);
+    if (!fn) return;
+    const url = host.dataset.dataUrl;
+    const height = Number(host.dataset.height || 360);
+    const width = host.clientWidth || 800;
+    let data: any = null;
+    if (url) {
+      try { data = await (await fetch(url)).json(); }
+      catch { host.textContent = 'Failed to load data.'; return; }
+    }
+    const node = fn(Plot, data, { width, height });
+    host.replaceChildren(node);
+  }
+
+  let t: number | undefined;
+  window.addEventListener('resize', () => {
+    clearTimeout(t);
+    t = window.setTimeout(() => {
+      document.querySelectorAll<HTMLElement>('.plot-host').forEach(render);
+    }, 150);
+  });
+
+  new MutationObserver(() => {
+    document.querySelectorAll<HTMLElement>('.plot-host').forEach(render);
+  }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+  document.querySelectorAll<HTMLElement>('.plot-host').forEach(render);
+</script>

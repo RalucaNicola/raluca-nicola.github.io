@@ -1,0 +1,11 @@
+---
+interface Props {
+  caption?: string;
+  wide?: boolean;
+}
+const { caption, wide = true } = Astro.props;
+---
+<figure class:list={[{ 'viz-wide': wide }]}>
+  <slot />
+  {caption && <figcaption>{caption}</figcaption>}
+</figure>

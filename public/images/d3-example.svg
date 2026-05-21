@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500">
+  <rect width="800" height="500" fill="#1c1c1b"/>
+  <g fill="#f1a07e" opacity="0.85">
+    <circle cx="120" cy="360" r="10"/>
+    <circle cx="180" cy="300" r="14"/>
+    <circle cx="240" cy="250" r="8"/>
+    <circle cx="300" cy="220" r="20"/>
+    <circle cx="360" cy="180" r="12"/>
+    <circle cx="420" cy="280" r="16"/>
+    <circle cx="500" cy="200" r="10"/>
+    <circle cx="560" cy="320" r="22"/>
+    <circle cx="620" cy="240" r="8"/>
+    <circle cx="680" cy="290" r="14"/>
+  </g>
+  <text x="60" y="100" font-family="Georgia, serif" font-size="48" fill="#fdfcf9">Scatter, in D3</text>
+</svg>

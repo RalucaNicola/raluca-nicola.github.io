@@ -1,0 +1,83 @@
+---
+// Override for markdown `![alt](src)` images so they're clickable:
+// clicking enlarges the image in an in-page lightbox overlay.
+interface Props {
+  src: string | { src: string };
+  alt?: string;
+}
+const { src, alt, ...rest } = Astro.props;
+const href = typeof src === 'string' ? src : src.src;
+---
+<button type="button" class="md-image-zoom" aria-label="Enlarge image">
+  <img src={href} alt={alt ?? ''} {...rest} />
+</button>
+
+<style>
+  .md-image-zoom {
+    display: inline-block;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: zoom-in;
+  }
+  .md-image-zoom img {
+    display: block;
+  }
+</style>
+
+<script>
+  function setupLightbox() {
+    let overlay = document.querySelector<HTMLDivElement>('.md-lightbox');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.className = 'md-lightbox';
+      overlay.innerHTML = '<img alt="" />';
+      document.body.appendChild(overlay);
+
+      const style = document.createElement('style');
+      style.textContent = `
+        .md-lightbox {
+          position: fixed;
+          inset: 0;
+          z-index: 1000;
+          display: none;
+          align-items: center;
+          justify-content: center;
+          padding: 2rem;
+          background: rgba(0, 0, 0, 0.85);
+          cursor: zoom-out;
+        }
+        .md-lightbox.open { display: flex; }
+        .md-lightbox img {
+          max-width: 100%;
+          max-height: 100%;
+          object-fit: contain;
+          border-radius: 4px;
+        }
+      `;
+      document.head.appendChild(style);
+
+      const close = () => {
+        overlay!.classList.remove('open');
+      };
+      overlay.addEventListener('click', close);
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') close();
+      });
+    }
+
+    const overlayImg = overlay.querySelector('img')!;
+    document.querySelectorAll<HTMLButtonElement>('.md-image-zoom').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const img = btn.querySelector('img');
+        if (!img) return;
+        overlayImg.src = img.currentSrc || img.src;
+        overlayImg.alt = img.alt;
+        overlay!.classList.add('open');
+      });
+    });
+  }
+
+  setupLightbox();
+  document.addEventListener('astro:page-load', setupLightbox);
+</script>

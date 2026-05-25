@@ -1,6 +1,7 @@
 ---
 import { getCollection, render } from 'astro:content';
 import ArticleLayout from '~/layouts/ArticleLayout.astro';
+import MarkdownImage from '~/components/viz/MarkdownImage.astro';
 
 export async function getStaticPaths() {
   const entries = await getCollection('drawings', ({ data }) => !data.draft);
@@ -20,5 +21,5 @@ const { Content } = await render(entry);
   tags={entry.data.tags}
   section="drawings"
 >
-  <Content />
+  <Content components={{ img: MarkdownImage }} />
 </ArticleLayout>

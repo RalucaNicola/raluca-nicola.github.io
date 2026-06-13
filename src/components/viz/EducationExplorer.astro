@@ -1,0 +1,240 @@
+---
+// Wrapper for the "Better access to education" article. Provides the styles for
+// the inline interactive markup (histogram, legend, toggle/zoom buttons, 3D map)
+// authored in the MDX, and loads D3 + the ArcGIS Maps SDK + the article logic.
+// Styles are global but namespaced under `.education-explorer`, and the scripts
+// are only emitted on pages that use this component.
+const base = import.meta.env.BASE_URL;
+const dataUrl = (base + '/article-data/years-of-schooling-histogram.csv').replace(/\/+/g, '/');
+const scriptUrl = (base + '/article-scripts/children-education.js').replace(/\/+/g, '/');
+---
+
+<div class="education-explorer" data-csv-url={dataUrl}>
+  <slot />
+</div>
+
+<!-- ArcGIS theme + D3 + ArcGIS SDK + article logic. Deferred so they load in
+     order without blocking, and the logic runs once `require`/`d3` exist. -->
+<link rel="stylesheet" href="https://js.arcgis.com/4.24/esri/themes/light/main.css" />
+<script is:inline defer src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<script is:inline defer src="https://js.arcgis.com/4.24/"></script>
+<script is:inline defer src={scriptUrl}></script>
+
+<style is:global>
+  @import url("https://fonts.googleapis.com/css2?family=Roboto+Mono&display=swap");
+
+  .education-explorer {
+    --edu-color: rgb(190 124 200);
+    --edu-color-50: rgb(190 124 200 / 50%);
+    --edu-color-30: rgb(190 124 200 / 30%);
+    --edu-color-10: rgb(190 124 200 / 10%);
+    --edu-color-dark: rgb(130 72 138);
+  }
+
+  .education-explorer .subtitle {
+    text-align: center;
+    font-style: italic;
+    margin: -0.5rem 0 2rem;
+  }
+
+  .education-explorer .mainQuestion {
+    margin-left: 1.25rem;
+    border-left: 10px solid var(--edu-color-50);
+    padding: 1rem 1.25rem;
+    background-color: var(--edu-color-10);
+  }
+
+  /* Histogram + its toggle buttons */
+  .education-explorer #histogram {
+    margin: 1.5rem auto;
+    display: block;
+    max-width: 540px;
+  }
+  .education-explorer #histogram text {
+    font-family: "Roboto Mono", monospace;
+    font-size: 0.8rem;
+    fill: var(--text);
+  }
+  .education-explorer #histogram .tick line,
+  .education-explorer #histogram .domain { stroke: var(--border); }
+
+  .education-explorer #select1990,
+  .education-explorer #select2020,
+  .education-explorer .zoomTo {
+    font-family: "Roboto Mono", monospace;
+    font-size: 0.95rem;
+    border: 1px solid #000;
+    border-radius: 3px;
+    box-shadow: 2px 2px var(--edu-color-dark);
+    cursor: pointer;
+    padding: 0.1rem 0.5rem;
+  }
+  .education-explorer #select1990,
+  .education-explorer #select2020 {
+    background: var(--edu-color-30);
+    color: #fff;
+    font-weight: bold;
+  }
+  .education-explorer #select1990.selected,
+  .education-explorer #select2020.selected,
+  .education-explorer #select1990:hover,
+  .education-explorer #select2020:hover {
+    background: var(--edu-color);
+    color: #fff;
+    border-color: #000;
+  }
+  .education-explorer .zoomTo {
+    background: var(--edu-color-50);
+    color: #000;
+  }
+  .education-explorer .zoomTo:hover {
+    background: var(--edu-color);
+    color: #000;
+    border-color: #000;
+  }
+
+  /* Inline highlights in the prose */
+  .education-explorer .data-country {
+    background-color: rgba(190, 217, 186, 0.7);
+    padding: 1px 4px;
+  }
+  .education-explorer .no-data-country {
+    background: repeating-linear-gradient(
+      45deg,
+      rgba(0, 0, 0, 0),
+      rgba(0, 0, 0, 0) 10px,
+      rgba(0, 0, 0, 0.2) 10px,
+      rgba(0, 0, 0, 0.2) 13px
+    );
+    padding: 1px 4px;
+  }
+
+  /* Static legend */
+  .education-explorer .explanation {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+    gap: 1rem;
+    margin: 1.5rem 0;
+  }
+  .education-explorer #legend,
+  .education-explorer .dynamicLegend {
+    display: flex;
+    font-size: 0.9rem;
+    max-height: 50vh;
+    overflow: auto;
+  }
+  .education-explorer #legend { justify-content: flex-end; margin-right: 20px; }
+  .education-explorer .dynamicLegend { padding: 10px; }
+  .education-explorer .years {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 12px 0;
+  }
+  .education-explorer .years > p { margin: 0; }
+  .education-explorer .axis {
+    width: 10px;
+    border: 1px solid #666;
+    border-left: none;
+    margin: 20px 5px;
+  }
+  .education-explorer .dataContainer {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    margin: 20px 0;
+  }
+  .education-explorer .dynamicLegend > .dataContainer { margin: 0; display: block; }
+  .education-explorer .bar { height: 3px; margin: 0.5px auto; }
+  .education-explorer .year { color: #666; }
+  .education-explorer .dynamicLegend .bar {
+    font-size: 0.7rem;
+    height: auto;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .education-explorer .numberContainer { display: flex; }
+  .education-explorer .numberPointers {
+    width: 20px;
+    border-top: 1px solid #aaa;
+    border-bottom: 1px solid #aaa;
+    margin: 22px 0 22px -10px;
+    z-index: -1;
+  }
+  .education-explorer .numberText {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    line-height: 1rem;
+  }
+  .education-explorer .legendExplanation { max-width: 300px; }
+
+  /* 3D map */
+  .education-explorer #viewDiv {
+    position: relative;
+    height: 600px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--accent-soft);
+  }
+  .education-explorer #tooltipDiv {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: #fff;
+    color: #222;
+    display: none;
+    max-width: 40%;
+    border-radius: 8px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
+  }
+  .education-explorer .tooltipHeader { padding: 20px 10px 10px; }
+  .education-explorer .tooltipTitle { margin: 0; color: var(--edu-color-dark); }
+  .education-explorer .tooltipSubtitle { font-size: 0.8rem; color: #666; margin: 0; }
+  .education-explorer .close {
+    background: none;
+    height: 28px;
+    width: 28px;
+    line-height: 1;
+    font-size: 1.2rem;
+    cursor: pointer;
+    border: none;
+    position: absolute;
+    top: 0;
+    right: 0;
+    opacity: 0.7;
+    padding: 4px;
+    color: #222;
+  }
+  .education-explorer .close:hover { opacity: 1; }
+  .education-explorer #warning {
+    pointer-events: none;
+    position: absolute;
+    left: 0;
+    top: 50%;
+    right: 0;
+    background-color: rgba(255 255 255 / 0.75);
+    color: #222;
+    text-align: center;
+    transition: opacity 500ms;
+    font-size: 1.1rem;
+    padding: 20px;
+  }
+  .education-explorer .show { opacity: 1; }
+  .education-explorer #warning.hide { opacity: 0; }
+
+  .education-explorer .attribution {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 1.5rem;
+  }
+
+  @media (max-width: 600px) {
+    .education-explorer .explanation { display: block; }
+    .education-explorer #legend { justify-content: center; }
+    .education-explorer .legendExplanation { max-width: 100%; }
+  }
+</style>

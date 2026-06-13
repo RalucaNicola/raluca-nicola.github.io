@@ -1,0 +1,37 @@
+---
+title: "Better access to education for children"
+description: "Children stay longer in school compared to 30 years ago."
+date: 2025-08-01
+cover: "./images/children-education.png"
+coverAlt: "Visualization of children's access to education over time."
+tags: ["Data visualization", "Maps"]
+---
+
+import EducationExplorer from '~/components/viz/EducationExplorer.astro';
+
+<EducationExplorer>
+
+Education is a basic right nowadays and most countries have managed to increase the access to education in the last 30 years. One way to measure this is [the number of expected years of schooling](https://ourworldindata.org/grapher/expected-years-of-schooling):
+How many years of schooling would a child of school entrance age receive if the current age-specific enrollment rates persist throughout the child's years of schooling?
+
+In the chart below, the height of a bar represents the number of countries that fall within each range of expected school years. If you switch between <button id="select1990">1990</button> and <button id="select2020" class="selected">2020</button> you can see this shift: more countries have a higher number of expected school years in 2020, compared to 1990.
+
+<div id="histogram"></div>
+
+In the map below <span class="data-country">most countries</span> have a chart that on the vertical axis shows the evolution of the expected school years from 1990 to 2021. <span class="no-data-country">Some countries</span> don't have data. The number of school years is encoded in both the color and the length of the bars, to make it easier to read:
+
+<div class="explanation">
+  <div id="legend"></div>
+  <p class="legendExplanation">Wide and blue bars mean more expected school years and shorter and light orange mean fewer expected school years.</p>
+</div>
+
+In 1990, the country with the lowest number of expected schooling years is <button class="zoomTo" data-code="NER">Niger</button> with approximately 2 schooling years. By 2021, the number of expected schooling years grew to 7. In developed countries like <button class="zoomTo" data-code="AUS">Australia</button> the indicator varies from 17 years in 1990 to 21 in 2021. In most countries the number of expected schooling years grew from 4 to 8 years. The exceptions are countries with wars or conflicts. For example, in <button class="zoomTo" data-code="SYR">Syria</button> we can see a drop in 2013, after the Syrian Civil War started.
+
+<div id="viewDiv" class="viz-wide">
+  <div id="tooltipDiv"></div>
+  <div id="warning" class="hide"></div>
+</div>
+
+<p class="attribution">Dataset: <a href="https://hdr.undp.org/content/human-development-report-2021-22" target="_blank" rel="noopener">UNDP, HDR</a> · Idea: <a href="https://ourworldindata.org/grapher/expected-years-of-schooling" target="_blank" rel="noopener">Our World in Data</a> · Basemap: Dylan Moriarty's <a href="https://www.projectlinework.org/" target="_blank" rel="noopener">hand-drawn countries</a> and John Nelson's <a href="https://arcgis.com/home/item.html?id=6d95153b210b44f3a76de7039754b71d" target="_blank" rel="noopener">grid lines</a>.</p>
+
+</EducationExplorer>

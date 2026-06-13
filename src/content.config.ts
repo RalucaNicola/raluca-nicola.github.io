@@ -11,14 +11,14 @@ const articleSchema = z.object({
   draft: z.boolean().default(false),
 });
 
-const dataVisualization = defineCollection({
-  loader: glob({ pattern: '**/*.{md,mdx}', base: './src/content/data-visualization' }),
+const work = defineCollection({
+  loader: glob({ pattern: '**/*.{md,mdx}', base: './src/content/work' }),
   schema: articleSchema,
 });
 
-const drawings = defineCollection({
-  loader: glob({ pattern: '**/*.{md,mdx}', base: './src/content/drawings' }),
+const hobbies = defineCollection({
+  loader: glob({ pattern: '**/*.{md,mdx}', base: './src/content/hobbies' }),
   schema: articleSchema,
 });
 
-export const collections = { 'data-visualization': dataVisualization, drawings };
+export const collections = { work, hobbies };

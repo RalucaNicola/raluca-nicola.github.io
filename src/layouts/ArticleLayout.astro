@@ -1,5 +1,6 @@
 ---
 import BaseLayout from './BaseLayout.astro';
+import { sectionLabel, sectionHref, tagHref, type Section } from '~/utils/site';
 
 interface Props {
   title: string;
@@ -7,14 +8,14 @@ interface Props {
   date: Date;
   cover?: string;
   coverAlt?: string;
-  section: 'data-visualization' | 'drawings';
+  section: Section;
   tags?: string[];
 }
 
 const { title, description, date, cover, coverAlt, section, tags = [] } = Astro.props;
 const dateLabel = date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 const base = import.meta.env.BASE_URL;
-const indexHref = (base + '/' + section).replace(/\/+/g, '/');
+const indexHref = sectionHref(section);
 const coverSrc = cover
   ? (cover.startsWith('http') ? cover : (base + cover).replace(/\/+/g, '/'))
   : undefined;
@@ -31,7 +32,7 @@ const coverSrc = cover
   <article>
     <header class="article-header reading">
       <p class="kicker">
-        <a href={indexHref}>{section === 'data-visualization' ? 'Data visualization' : 'Drawings'}</a>
+        <a href={indexHref}>{sectionLabel(section)}</a>
         <span aria-hidden="true">·</span>
         <time datetime={date.toISOString()}>{dateLabel}</time>
       </p>
@@ -39,7 +40,9 @@ const coverSrc = cover
       <p class="description">{description}</p>
       {tags.length > 0 && (
         <ul class="tags" aria-label="Tags">
-          {tags.map((t) => <li>#{t}</li>)}
+          {tags.map((t) => (
+            <li><a href={tagHref(t)} class="tag">{t}</a></li>
+          ))}
         </ul>
       )}
     </header>
@@ -74,12 +77,23 @@ const coverSrc = cover
     .tags {
       list-style: none;
       padding: 0;
-      margin: 0.5rem 0 0;
+      margin: 0.75rem 0 0;
       display: flex;
       flex-wrap: wrap;
       gap: 0.4rem;
-      color: var(--text-muted);
       font-size: 0.85rem;
+    }
+    .tag {
+      display: inline-block;
+      padding: 0.15rem 0.6rem;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      border: 1px solid transparent;
+    }
+    .tag:hover {
+      text-decoration: none;
+      border-color: var(--accent);
     }
     .cover {
       max-width: 64rem;

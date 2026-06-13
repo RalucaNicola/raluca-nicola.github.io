@@ -1,0 +1,55 @@
+---
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import Grid from '~/components/Grid.astro';
+import ArticleCard from '~/components/ArticleCard.astro';
+import { loadAllArticles, collectTags, articleHref, tagSlug, href } from '~/utils/site';
+
+export async function getStaticPaths() {
+  const [articles, tags] = await Promise.all([loadAllArticles(), collectTags()]);
+  return tags.map((tag) => ({
+    params: { tag: tag.slug },
+    props: {
+      label: tag.label,
+      entries: articles.filter((a) => a.data.tags.some((t) => tagSlug(t) === tag.slug)),
+    },
+  }));
+}
+
+const { label, entries } = Astro.props;
+---
+
+<BaseLayout title={`#${label}`} description={`Articles tagged ${label}.`}>
+  <section class="container">
+    <header class="page-header">
+      <p class="kicker"><a href={href('tags')}>Tags</a></p>
+      <h1>#{label}</h1>
+      <p>{entries.length} {entries.length === 1 ? 'article' : 'articles'} tagged <strong>{label}</strong>.</p>
+    </header>
+    <Grid>
+      {entries.map((e) => (
+        <ArticleCard
+          href={articleHref(e.section, e.id)}
+          title={e.data.title}
+          description={e.data.description}
+          date={e.data.date}
+          cover={e.data.cover}
+          coverAlt={e.data.coverAlt}
+          section={e.section}
+          tags={e.data.tags}
+        />
+      ))}
+    </Grid>
+  </section>
+
+  <style>
+    .page-header { margin-bottom: 1.5rem; }
+    .kicker {
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      font-size: 0.85rem;
+      margin: 0;
+    }
+    .kicker a { color: var(--accent); }
+    .page-header p { color: var(--text-muted); }
+  </style>
+</BaseLayout>

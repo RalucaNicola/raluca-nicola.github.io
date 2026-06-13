@@ -3,34 +3,33 @@ import { getCollection } from 'astro:content';
 import BaseLayout from '~/layouts/BaseLayout.astro';
 import Grid from '~/components/Grid.astro';
 import ArticleCard from '~/components/ArticleCard.astro';
+import { articleHref } from '~/utils/site';
 
-const base = import.meta.env.BASE_URL;
-const entries = (await getCollection('data-visualization', ({ data }) => !data.draft))
+const entries = (await getCollection('hobbies', ({ data }) => !data.draft))
   .sort((a, b) => +b.data.date - +a.data.date);
-
-const href = (id: string) => (base + '/data-visualization/' + id).replace(/\/+/g, '/');
 ---
 
-<BaseLayout title="Data visualization" description="Articles and notes.">
+<BaseLayout title="Hobbies" description="Watercolor, mountains, books and other pastimes.">
   <section class="container">
     <header class="page-header">
-      <h1>Data visualization</h1>
-      <p>Work projects and free time explorations with data.</p>
+      <h1>Hobbies</h1>
+      <p>Watercolor, mountains, books — life outside the screen.</p>
     </header>
     <Grid>
       {entries.map((e) => (
         <ArticleCard
-          href={href(e.id)}
+          href={articleHref('hobbies', e.id)}
           title={e.data.title}
           description={e.data.description}
           date={e.data.date}
           cover={e.data.cover}
           coverAlt={e.data.coverAlt}
-          section="data-visualization"
+          section="hobbies"
+          tags={e.data.tags}
         />
       ))}
     </Grid>
-    {entries.length === 0 && <p class="empty">No writings yet.</p>}
+    {entries.length === 0 && <p class="empty">Nothing here yet.</p>}
   </section>
 
   <style>

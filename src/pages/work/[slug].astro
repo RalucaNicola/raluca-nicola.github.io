@@ -4,7 +4,7 @@ import ArticleLayout from '~/layouts/ArticleLayout.astro';
 import MarkdownImage from '~/components/viz/MarkdownImage.astro';
 
 export async function getStaticPaths() {
-  const entries = await getCollection('data-visualization', ({ data }) => !data.draft);
+  const entries = await getCollection('work', ({ data }) => !data.draft);
   return entries.map((entry) => ({ params: { slug: entry.id }, props: { entry } }));
 }
 
@@ -19,7 +19,7 @@ const { Content } = await render(entry);
   cover={entry.data.cover}
   coverAlt={entry.data.coverAlt}
   tags={entry.data.tags}
-  section="data-visualization"
+  section="work"
 >
   <Content components={{ img: MarkdownImage }} />
 </ArticleLayout>

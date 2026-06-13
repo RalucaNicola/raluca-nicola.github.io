@@ -10,8 +10,9 @@ function link(path: string) {
 }
 
 const home = link('/');
-const dataViz = link('/data-visualization');
-const drawings = link('/drawings');
+const work = link('/work');
+const hobbies = link('/hobbies');
+const tags = link('/tags');
 
 const logo = `${base}/globe.svg`.replace(/\/+/g, '/');
 ---
@@ -24,8 +25,9 @@ const logo = `${base}/globe.svg`.replace(/\/+/g, '/');
     </a>
     <nav aria-label="Primary">
       <ul>
-        <li><a href={dataViz.href} class:list={[{ active: dataViz.active }]}>Data visualization</a></li>
-        <li><a href={drawings.href} class:list={[{ active: drawings.active }]}>Drawings</a></li>
+        <li><a href={work.href} class:list={[{ active: work.active }]}>Work</a></li>
+        <li><a href={hobbies.href} class:list={[{ active: hobbies.active }]}>Hobbies</a></li>
+        <!-- <li><a href={tags.href} class:list={[{ active: tags.active }]}>Tags</a></li> -->
       </ul>
     </nav>
     <ThemeToggle />

@@ -1,4 +1,6 @@
 ---
+import { type Section } from '~/utils/site';
+
 interface Props {
   href: string;
   title: string;
@@ -6,12 +8,12 @@ interface Props {
   date: Date;
   cover?: string;
   coverAlt?: string;
-  section: 'data-visualization' | 'drawings';
+  section?: Section;
+  tags?: string[];
 }
 
-const { href, title, description, date, cover, coverAlt, section } = Astro.props;
+const { href, title, description, date, cover, coverAlt, tags = [] } = Astro.props;
 const dateLabel = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-const sectionLabel = section === 'data-visualization' ? 'Data visualization' : 'Drawing';
 const base = import.meta.env.BASE_URL;
 const coverSrc = cover
   ? (cover.startsWith('http') ? cover : (base + cover).replace(/\/+/g, '/'))
@@ -23,9 +25,13 @@ const coverSrc = cover
     {coverSrc ? (
       <img src={coverSrc} alt={coverAlt ?? ''} loading="lazy" decoding="async" />
     ) : (
-      <div class="cover-fallback" aria-hidden="true">{sectionLabel}</div>
+      <div class="cover-fallback" aria-hidden="true">{tags[0] ?? ''}</div>
     )}
-    <span class={`badge badge-${section}`}>{sectionLabel}</span>
+    {tags.length > 0 && (
+      <ul class="badges" aria-label="Tags">
+        {tags.map((t) => <li class="badge">{t}</li>)}
+      </ul>
+    )}
   </div>
   <div class="meta">
     <time datetime={date.toISOString()}>{dateLabel}</time>
@@ -72,10 +78,19 @@ const coverSrc = cover
     font-size: 1.1rem;
     letter-spacing: 0.04em;
   }
-  .badge {
+  .badges {
     position: absolute;
     top: 0.6rem;
     left: 0.6rem;
+    right: 0.6rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .badge {
     font-size: 0.72rem;
     text-transform: uppercase;
     letter-spacing: 0.06em;

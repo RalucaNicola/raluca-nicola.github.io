@@ -1,38 +1,16 @@
 ---
-import { getCollection } from 'astro:content';
 import BaseLayout from '~/layouts/BaseLayout.astro';
 import Grid from '~/components/Grid.astro';
 import ArticleCard from '~/components/ArticleCard.astro';
+import { loadAllArticles, articleHref, href } from '~/utils/site';
 
-const base = import.meta.env.BASE_URL;
-
-type Section = 'data-visualization' | 'drawings';
-
-async function loadSection<S extends Section>(section: S) {
-  const entries = await getCollection(section, ({ data }) => !data.draft);
-  return entries.map((e) => ({ ...e, section }));
-}
-
-const all = (await Promise.all([
-  loadSection('data-visualization'),
-  loadSection('drawings'),
-])).flat();
-
-all.sort((a, b) => +b.data.date - +a.data.date);
-
-function href(path: string) {
-  return (base + '/' + path).replace(/\/+/g, '/');
-}
-
-function articleHref(section: Section, id: string) {
-  return href(section + '/' + id);
-}
+const all = await loadAllArticles();
 ---
 
 <BaseLayout title="Raluca Nicola" description="Articles on data visualization, watercolor drawings and mountain adventures.">
   <section class="container intro">
-    <h2>Hey there, I'm Raluca!</h2> 
-    <p>I like to create <a href={href('data-visualization')}>data visualizations</a> about various topics, but mostly geodata and mostly on the web. A few years back I fell in love with <a href={href('drawings')}>watercolor</a>.
+    <h2>Hey there, I'm Raluca!</h2>
+    <p>I like to create <a href={href('work')}>data visualizations</a> about various topics, but mostly geodata and mostly on the web. A few years back I fell in love with <a href={href('hobbies')}>watercolor</a>.
     On sunny weekends I'm probably somewhere in the mountains.</p>
   </section>
 
@@ -47,6 +25,7 @@ function articleHref(section: Section, id: string) {
           cover={entry.data.cover}
           coverAlt={entry.data.coverAlt}
           section={entry.section}
+          tags={entry.data.tags}
         />
       ))}
     </Grid>

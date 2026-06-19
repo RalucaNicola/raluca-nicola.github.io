@@ -2,19 +2,36 @@
 import BaseLayout from '~/layouts/BaseLayout.astro';
 import Grid from '~/components/Grid.astro';
 import ArticleCard from '~/components/ArticleCard.astro';
+import HeroWash from '~/components/HeroWash.astro';
 import { loadAllArticles, articleHref, href } from '~/utils/site';
 
 const all = await loadAllArticles();
 ---
 
 <BaseLayout title="Raluca Nicola" description="Articles on data visualization, watercolor drawings and mountain adventures.">
-  <section class="container intro">
-    <h2>Hey there, I'm Raluca!</h2>
-    <p>I like to create <a href={href('work')}>data visualizations</a> about various topics, but mostly geodata and mostly on the web. A few years back I fell in love with <a href={href('hobbies')}>watercolor</a>.
-    On sunny weekends I'm probably somewhere in the mountains.</p>
-  </section>
+  <HeroWash>
+    <section class="container intro">
+      <p>
+        I create <a class="paint" href={href('work')}>data visualizations</a> —
+        mostly geodata, mostly on the web. I also paint in
+        <a class="paint paint-2" href={href('hobbies')}>watercolor</a>, and spend
+        sunny weekends in the mountains.
+      </p>
+    </section>
+  </HeroWash>
 
   <section class="container">
+    <div class="divider">
+      <span>Selected projects</span>
+    </div>
+    <svg class="wave" viewBox="0 0 980 14" preserveAspectRatio="none" fill="none" aria-hidden="true">
+      <path
+        d="M0 7 Q 24 1 49 7 T 98 7 T 147 7 T 196 7 T 245 7 T 294 7 T 343 7 T 392 7 T 441 7 T 490 7 T 539 7 T 588 7 T 637 7 T 686 7 T 735 7 T 784 7 T 833 7 T 882 7 T 931 7 T 980 7"
+        stroke="currentColor"
+        stroke-width="1.4"
+      ></path>
+    </svg>
+
     <Grid>
       {all.map((entry) => (
         <ArticleCard
@@ -32,7 +49,64 @@ const all = await loadAllArticles();
   </section>
 
   <style>
-    .intro { margin-bottom: 2rem; }
-    .intro p { color: var(--text-muted); font-size: 1.1rem; }
+    .intro {
+      padding: 8rem 2.5rem 7rem;
+      max-width: 700px;
+    }
+    .intro p {
+      font-family: var(--font-serif);
+      font-weight: 400;
+      font-size: clamp(1.5rem, 3.4vw, 2.125rem);
+      line-height: 1.32;
+      letter-spacing: -0.015em;
+      margin: 0;
+      color: var(--text);
+    }
+
+    /* painted underline link that fills on hover */
+    .intro a.paint {
+      text-decoration: none;
+      font-style: italic;
+      color: var(--text);
+      background-image: linear-gradient(var(--accent), var(--accent));
+      background-size: 100% 2px;
+      background-repeat: no-repeat;
+      background-position: 0 92%;
+      padding-bottom: 2px;
+      transition: background-size 0.3s ease;
+      font-weight: 400;
+    }
+    .intro a.paint-2 {
+      background-image: linear-gradient(var(--wash1), var(--wash1));
+    }
+    .intro a.paint:hover {
+      background-size: 100% 38%;
+      color: var(--text);
+      text-decoration: none;
+    }
+
+    /* hand-drawn wavy divider */
+    .divider {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .divider span {
+      font-size: 0.75rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .wave {
+      width: 100%;
+      height: 14px;
+      margin-bottom: 3rem;
+      color: var(--border);
+    }
+
+    @media (max-width: 680px) {
+      .intro { padding: 4.5rem 1.5rem 4rem; }
+    }
   </style>
 </BaseLayout>

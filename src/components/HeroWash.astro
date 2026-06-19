@@ -1,0 +1,91 @@
+---
+// Ambient hero washes: three soft blurred blobs whose colors are randomized
+// on load (kept harmonious around one base hue) and whose positions slowly
+// drift. Wraps its slotted content, which sits above the washes.
+---
+<div class="hero-wash">
+  <div class="wash a" aria-hidden="true"></div>
+  <div class="wash b" aria-hidden="true"></div>
+  <div class="wash c" aria-hidden="true"></div>
+  <div class="hero-wash-content">
+    <slot />
+  </div>
+</div>
+
+<script is:inline>
+  (() => {
+    document.querySelectorAll('.hero-wash').forEach((group) => {
+      const washes = group.querySelectorAll('.wash');
+      if (!washes.length) return;
+      // One random base hue, with the others spread around it so the
+      // palette stays harmonious (analogous) while changing every load.
+      const base = Math.random() * 360;
+      const spread = 45 + Math.random() * 35; // 45–80° between washes
+      washes.forEach((el, i) => {
+        const hue = Math.round((base + i * spread) % 360);
+        const sat = Math.round(40 + Math.random() * 14); // 40–54%
+        const light = Math.round(30 + Math.random() * 10); // 30–40%
+        const alpha = 0.6; // fixed alpha for all washes
+        el.style.background = `hsla(${hue} ${sat}% ${light}% / ${alpha})`;
+      });
+    });
+  })();
+</script>
+
+<style>
+  .hero-wash { position: relative; }
+  .hero-wash-content { position: relative; z-index: 2; }
+
+  /* soft ambient washes — colors randomized on load, positions drifting */
+  .wash {
+    position: absolute;
+    width: 560px;
+    height: 480px;
+    border-radius: 50%;
+    filter: blur(90px);
+    z-index: 0;
+    pointer-events: none;
+    will-change: transform;
+  }
+  .wash.a {
+    background: var(--wash1);
+    top: -120px;
+    right: -60px;
+    opacity: 0.22;
+    animation: drift-a 26s ease-in-out infinite;
+  }
+  .wash.b {
+    background: var(--wash2);
+    top: 60px;
+    right: 180px;
+    opacity: 0.16;
+    animation: drift-b 34s ease-in-out infinite;
+  }
+  .wash.c {
+    background: var(--wash3);
+    top: 20px;
+    left: -120px;
+    opacity: 0.16;
+    animation: drift-c 30s ease-in-out infinite;
+  }
+
+  @keyframes drift-a {
+    0%   { transform: translate(0, 0); }
+    50%  { transform: translate(-200px, 150px); }
+    100% { transform: translate(0, 0); }
+  }
+  @keyframes drift-b {
+    0%   { transform: translate(0, 0); }
+    50%  { transform: translate(150px, 0px); }
+    100% { transform: translate(0, 0); }
+  }
+  @keyframes drift-c {
+    0%   { transform: translate(0, 0); }
+    50%  { transform: translate(80px, 200px); }
+    100% { transform: translate(0, 0); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .wash { animation: none !important; }
+  }
+</style>

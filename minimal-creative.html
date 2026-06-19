@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Raluca Nicola</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FBFAF6; --ink:#1A1813; --muted:#9A968A; --line:#E9E6DD;
+    --accent:#B4541F; --wash1:#7FA6C9; --wash2:#D6A24A; --wash3:#8FB48C;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);
+    font-weight:300;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  .disp{font-family:'Fraunces',serif}
+  .wrap{max-width:980px;margin:0 auto;padding:0 40px}
+  a{color:inherit}
+
+  /* soft single wash behind the hero — the one ambient creative gesture */
+  .wash{position:absolute;width:560px;height:480px;border-radius:50%;filter:blur(90px);
+    z-index:0;pointer-events:none;opacity:.22}
+  .wash.a{background:var(--wash1);top:-120px;right:-60px}
+  .wash.b{background:var(--wash2);top:60px;right:180px;opacity:.16}
+
+  header .wrap{display:flex;justify-content:space-between;align-items:baseline;
+    padding-top:44px;position:relative;z-index:2}
+  .name{font-size:15px;font-weight:500;letter-spacing:.01em}
+  nav{display:flex;gap:30px;font-size:13px;color:var(--muted)}
+  nav a{color:var(--muted);text-decoration:none;transition:.2s}
+  nav a:hover{color:var(--ink)}
+
+  .hero-wrap{position:relative}
+  .intro{position:relative;z-index:2;padding:130px 0 120px;max-width:660px}
+  .intro p{font-family:'Fraunces',serif;font-weight:400;font-size:34px;line-height:1.32;
+    letter-spacing:-.015em}
+  /* painted underline link */
+  .intro a.paint{text-decoration:none;font-style:italic;color:var(--ink);
+    background-image:linear-gradient(var(--accent),var(--accent));
+    background-size:100% 2px;background-repeat:no-repeat;background-position:0 92%;
+    padding-bottom:2px;transition:.3s}
+  .intro a.paint:nth-of-type(2){background-image:linear-gradient(var(--wash1),var(--wash1))}
+  .intro a.paint:hover{background-size:100% 38%;color:var(--ink)}
+
+  /* hand-drawn wavy divider */
+  .divider{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px}
+  .divider span{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+  .wave{width:100%;height:14px;margin-bottom:48px;color:var(--line)}
+
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:64px 56px}
+  .item{display:block;text-decoration:none;color:inherit}
+  .thumb{aspect-ratio:4/3;position:relative;overflow:hidden;background:#efeee7}
+  /* the bloom: grayscale paper that drinks in color on hover */
+  .thumb .layer{position:absolute;inset:0;filter:grayscale(1) contrast(.92) brightness(1.04);
+    transition:filter .7s cubic-bezier(.2,.6,.2,1),transform .7s cubic-bezier(.2,.6,.2,1);
+    transform:scale(1.01)}
+  .item:hover .thumb .layer{filter:grayscale(0) contrast(1) brightness(1);transform:scale(1.04)}
+  /* a wet edge that washes in from a corner */
+  .thumb::after{content:"";position:absolute;inset:0;
+    background:radial-gradient(120% 120% at 18% 100%,rgba(180,84,31,.0),rgba(180,84,31,.14));
+    opacity:0;transition:opacity .7s ease}
+  .item:hover .thumb::after{opacity:1}
+
+  .info{display:flex;align-items:baseline;gap:14px;margin-top:18px}
+  .info .date{font-size:12px;color:var(--muted);min-width:56px;letter-spacing:.02em;
+    font-variant-numeric:tabular-nums}
+  .info h3{font-family:'Fraunces',serif;font-size:20px;font-weight:400;letter-spacing:-.01em;line-height:1.2}
+  .cat{font-size:11px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;
+    margin:9px 0 0 70px}
+  .desc{font-size:14px;color:var(--muted);margin:0 0 0 70px;max-width:340px;
+    max-height:0;opacity:0;overflow:hidden;transition:.4s ease}
+  .item:hover .desc{max-height:60px;opacity:1;margin-top:8px}
+
+  footer{padding:120px 0 70px;position:relative;z-index:2}
+  footer .wrap{display:flex;justify-content:space-between;font-size:13px;color:var(--muted)}
+  footer a{text-decoration:none}
+  footer a:hover{color:var(--accent)}
+
+  /* quiet thumbnails (color lives underneath, revealed by the bloom) */
+  .t1{background:linear-gradient(160deg,#c6d2dd,#8ea6bd)}
+  .t1 .layer{background:
+    linear-gradient(115deg,transparent 52%,rgba(90,110,130,.6) 52% 56%,transparent 56%),
+    radial-gradient(circle at 30% 85%,var(--wash2) 0 14px,transparent 15px),
+    linear-gradient(160deg,#c6d2dd,#8ea6bd)}
+  .t2 .layer{background:
+    repeating-linear-gradient(0deg,rgba(127,166,201,.4) 0 1px,transparent 1px 19px),
+    repeating-linear-gradient(90deg,rgba(127,166,201,.4) 0 1px,transparent 1px 19px),
+    radial-gradient(circle at 55% 50%,var(--wash2) 0 7px,transparent 8px),#15202e}
+  .t3 .layer{background:
+    radial-gradient(circle at 28% 64%,var(--accent) 0 9px,transparent 10px),
+    radial-gradient(circle at 72% 42%,var(--wash3) 0 12px,transparent 13px),
+    linear-gradient(transparent 68%,rgba(120,140,100,.6) 68%),
+    linear-gradient(160deg,#e2dcc6,#c0b692)}
+  .t4 .layer{background:
+    radial-gradient(circle at 50% 45%,transparent 58px,rgba(255,255,255,.14) 59px,transparent 61px),
+    radial-gradient(circle at 44% 40%,var(--wash2) 0 5px,transparent 6px),
+    radial-gradient(circle at 56% 52%,var(--accent) 0 5px,transparent 6px),
+    radial-gradient(circle at 50% 45%,#3a6a98,#14283c)}
+  .t5 .layer{background:
+    repeating-linear-gradient(90deg,var(--wash1) 0 4px,transparent 4px 22px) bottom/auto 52% repeat-x,
+    #e8ebe4}
+  .t5{mask:none}
+  .t6 .layer{background:
+    linear-gradient(55deg,transparent,rgba(214,162,74,.55),transparent),
+    linear-gradient(125deg,transparent,rgba(127,166,201,.55),transparent),#15191c}
+
+  @media(max-width:680px){
+    .grid{grid-template-columns:1fr;gap:54px}
+    .intro{padding:80px 0 70px}.intro p{font-size:26px}
+    .desc{max-height:none;opacity:1;margin-top:8px}
+    .thumb .layer{filter:grayscale(0)}
+  }
+  @media(prefers-reduced-motion:reduce){.thumb .layer{transition:none}}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <span class="name disp">Raluca Nicola</span>
+  <nav><a href="#">Work</a><a href="#">Hobbies</a><a href="#">☾</a></nav>
+</div></header>
+
+<div class="hero-wrap">
+  <div class="wash a"></div><div class="wash b"></div>
+  <div class="wrap">
+    <section class="intro">
+      <p>I create <a class="paint" href="#">data visualizations</a> — mostly geodata,
+         mostly on the web. I also paint in <a class="paint" href="#">watercolor</a>,
+         and spend sunny weekends in the mountains.</p>
+    </section>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="divider"><span>Selected work</span><span>2024 — 2026</span></div>
+  <svg class="wave" viewBox="0 0 980 14" preserveAspectRatio="none" fill="none">
+    <path d="M0 7 Q 24 1 49 7 T 98 7 T 147 7 T 196 7 T 245 7 T 294 7 T 343 7 T 392 7 T 441 7 T 490 7 T 539 7 T 588 7 T 637 7 T 686 7 T 735 7 T 784 7 T 833 7 T 882 7 T 931 7 T 980 7"
+      stroke="currentColor" stroke-width="1.4"/>
+  </svg>
+
+  <section class="grid">
+
+    <a class="item" href="#"><div class="thumb t1"><div class="layer"></div></div>
+      <div class="info"><span class="date">Jan ’26</span><h3>Argentina — a travel sketchbook</h3></div>
+      <div class="cat">Watercolor · Mountains</div>
+      <p class="desc">My travels to Patagonia, in watercolor.</p></a>
+
+    <a class="item" href="#"><div class="thumb t2"><div class="layer"></div></div>
+      <div class="info"><span class="date">Dec ’25</span><h3>Raleigh in Motion</h3></div>
+      <div class="cat">Data viz · Maps</div>
+      <p class="desc">A dashboard for real-time and historical traffic in Raleigh, NC.</p></a>
+
+    <a class="item" href="#"><div class="thumb t3"><div class="layer"></div></div>
+      <div class="info"><span class="date">Sep ’25</span><h3>Bremgarten in watercolor</h3></div>
+      <div class="cat">Watercolor</div>
+      <p class="desc">A painting class with Susanne Brem.</p></a>
+
+    <a class="item" href="#"><div class="thumb t4"><div class="layer"></div></div>
+      <div class="info"><span class="date">Aug ’25</span><h3>47 weeks of a Swainson's hawk</h3></div>
+      <div class="cat">Data viz · Maps</div>
+      <p class="desc">One hawk's migration, traced across two continents.</p></a>
+
+    <a class="item" href="#"><div class="thumb t5"><div class="layer"></div></div>
+      <div class="info"><span class="date">Aug ’25</span><h3>A year of world rainfall</h3></div>
+      <div class="cat">Data viz · Maps</div>
+      <p class="desc">Twelve months of global precipitation.</p></a>
+
+    <a class="item" href="#"><div class="thumb t6"><div class="layer"></div></div>
+      <div class="info"><span class="date">Feb ’24</span><h3>Cambridge bikes</h3></div>
+      <div class="cat">Data viz · Maps</div>
+      <p class="desc">A day of bike-share trips across the city.</p></a>
+
+  </section>
+</div>
+
+<footer><div class="wrap">
+  <span>Raluca Nicola © 2026</span>
+  <span><a href="#">Email</a>　<a href="#">GitHub</a>　<a href="#">LinkedIn</a></span>
+</div></footer>
+</body>
+</html>

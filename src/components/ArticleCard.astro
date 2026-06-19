@@ -13,106 +13,136 @@ interface Props {
 }
 
 const { href, title, description, date, cover, coverAlt, tags = [] } = Astro.props;
-const dateLabel = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+const dateLabel = date.toLocaleDateString('en-US', { year: '2-digit', month: 'short' });
+const category = tags.join(' · ');
 const base = import.meta.env.BASE_URL;
 const coverSrc = cover
   ? (cover.startsWith('http') ? cover : (base + cover).replace(/\/+/g, '/'))
   : undefined;
 ---
 
-<a class="card" href={href} aria-label={title}>
-  <div class="cover">
+<a class="item" href={href} aria-label={title}>
+  <div class="thumb">
     {coverSrc ? (
-      <img src={coverSrc} alt={coverAlt ?? ''} loading="lazy" decoding="async" />
+      <img class="layer" src={coverSrc} alt={coverAlt ?? ''} loading="lazy" decoding="async" />
     ) : (
-      <div class="cover-fallback" aria-hidden="true">{tags[0] ?? ''}</div>
-    )}
-    {tags.length > 0 && (
-      <ul class="badges" aria-label="Tags">
-        {tags.map((t) => <li class="badge">{t}</li>)}
-      </ul>
+      <div class="layer cover-fallback" aria-hidden="true">{tags[0] ?? ''}</div>
     )}
   </div>
-  <div class="meta">
-    <time datetime={date.toISOString()}>{dateLabel}</time>
+  <div class="info">
+    <time class="date" datetime={date.toISOString()}>{dateLabel}</time>
+    <h3>{title}</h3>
   </div>
-  <h3 class="title">{title}</h3>
+  {category && <div class="cat">{category}</div>}
   <p class="desc">{description}</p>
 </a>
 
 <style>
-  .card {
-    display: flex;
-    flex-direction: column;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    overflow: hidden;
-    color: var(--text);
-    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
-  }
-  .card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow);
-    border-color: var(--accent);
+  .item {
+    display: block;
     text-decoration: none;
+    color: inherit;
   }
-  .cover {
+  .item:hover { text-decoration: none; }
+
+  .thumb {
+    aspect-ratio: 4 / 3;
     position: relative;
-    aspect-ratio: 16 / 10;
-    background: var(--accent-soft);
     overflow: hidden;
+    background: var(--accent-soft);
   }
-  .cover img {
+  /* grayscale paper that drinks in color on hover */
+  .thumb .layer {
+    position: absolute;
+    inset: 0;
     width: 100%;
     height: 100%;
     object-fit: cover;
+    filter: grayscale(1) contrast(0.92) brightness(1.04);
+    transition:
+      filter 0.7s cubic-bezier(0.2, 0.6, 0.2, 1),
+      transform 0.7s cubic-bezier(0.2, 0.6, 0.2, 1);
+    transform: scale(1.01);
   }
+  .item:hover .thumb .layer {
+    filter: grayscale(0) contrast(1) brightness(1);
+    transform: scale(1.04);
+  }
+  /* a wet edge that washes in from a corner */
+  .thumb::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      120% 120% at 18% 100%,
+      rgba(180, 84, 31, 0),
+      rgba(180, 84, 31, 0.14)
+    );
+    opacity: 0;
+    transition: opacity 0.7s ease;
+    pointer-events: none;
+  }
+  .item:hover .thumb::after { opacity: 1; }
+
   .cover-fallback {
-    width: 100%;
-    height: 100%;
     display: grid;
     place-items: center;
     font-family: var(--font-serif);
     color: var(--accent);
     font-size: 1.1rem;
     letter-spacing: 0.04em;
+    filter: none;
   }
-  .badges {
-    position: absolute;
-    top: 0.6rem;
-    left: 0.6rem;
-    right: 0.6rem;
+
+  .info {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.35rem;
-    margin: 0;
-    padding: 0;
-    list-style: none;
+    align-items: baseline;
+    gap: 14px;
+    margin-top: 18px;
   }
-  .badge {
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    background: var(--surface);
-    color: var(--text);
-    border: 1px solid var(--border);
-    padding: 0.2rem 0.5rem;
-    border-radius: 999px;
-  }
-  .meta {
-    padding: 0.9rem 1rem 0;
-    font-size: 0.8rem;
+  .info .date {
+    font-size: 0.75rem;
     color: var(--text-muted);
+    min-width: 56px;
+    letter-spacing: 0.02em;
+    font-variant-numeric: tabular-nums;
   }
-  .title {
-    margin: 0.3rem 1rem 0;
-    font-size: 1.15rem;
+  .info h3 {
+    font-family: var(--font-serif);
+    font-size: 1.25rem;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+    margin: 0;
+  }
+  .cat {
+    font-size: 0.6875rem;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin: 9px 0 0 70px;
   }
   .desc {
-    margin: 0.4rem 1rem 1rem;
+    font-size: 0.875rem;
     color: var(--text-muted);
-    font-size: 0.95rem;
-    flex: 1;
+    margin: 0 0 0 70px;
+    max-width: 340px;
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease, opacity 0.4s ease, margin-top 0.4s ease;
+  }
+  .item:hover .desc {
+    max-height: 80px;
+    opacity: 1;
+    margin-top: 8px;
+  }
+
+  @media (max-width: 680px) {
+    .thumb .layer { filter: grayscale(0); }
+    .desc { max-height: none; opacity: 1; margin-top: 8px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .thumb .layer { transition: none; }
   }
 </style>

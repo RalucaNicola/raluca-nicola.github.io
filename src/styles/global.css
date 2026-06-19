@@ -74,6 +74,14 @@ html, body {
   overflow-x: hidden;
 }
 
+/* Keep the footer pinned to the bottom on short pages. */
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
 a {
   color: var(--accent);
   text-decoration: none;

@@ -3,9 +3,9 @@ import BaseLayout from '~/layouts/BaseLayout.astro';
 import Grid from '~/components/Grid.astro';
 import ArticleCard from '~/components/ArticleCard.astro';
 import HeroWash from '~/components/HeroWash.astro';
-import { loadAllArticles, articleHref, href } from '~/utils/site';
+import { loadFeaturedArticles, articleHref, href } from '~/utils/site';
 
-const all = await loadAllArticles();
+const all = await loadFeaturedArticles();
 ---
 
 <BaseLayout title="Raluca Nicola" description="Articles on data visualization, watercolor drawings and mountain adventures.">

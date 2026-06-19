@@ -60,6 +60,11 @@ export async function loadAllArticles(): Promise<ArticleEntry[]> {
   return all.sort((a, b) => +b.data.date - +a.data.date);
 }
 
+/** Load only the articles marked `featured: true`, newest first. */
+export async function loadFeaturedArticles(): Promise<ArticleEntry[]> {
+  return (await loadAllArticles()).filter((e) => e.data.featured);
+}
+
 /** Collect every tag in use, with its display label, slug and article count. */
 export async function collectTags() {
   const articles = await loadAllArticles();

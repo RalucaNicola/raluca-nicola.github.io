@@ -22,8 +22,19 @@
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
   --container: 61rem; /* ~980px to match the reference */
-  --reading-width: 46rem;
+  --reading-width: 52rem;
+  /* roomier variants, applied only on very wide screens (see media query below) */
+  --container-wide: 78rem; /* ~1248px */
+  --reading-wide: 54rem; /* ~864px */
   --radius: 10px;
+}
+
+/* On very wide screens, let the layout breathe a little more. */
+@media (min-width: 100rem) { /* ~1600px */
+  :root {
+    --container: var(--container-wide);
+    --reading-width: var(--reading-wide);
+  }
 }
 
 :root[data-theme="dark"] {

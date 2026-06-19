@@ -107,8 +107,15 @@ const coverSrc = cover
       border: 1px solid var(--border);
       margin: 0 auto;
     }
-    .article-body { margin-top: 2rem; }
-    .article-body :global(h2) { margin-top: 2rem; }
+    .article-body {
+      margin-top: 2rem;
+      font-size: 1.125rem; /* ~18px, up from 16px for easier reading */
+      font-weight: 400; /* darker/more solid than the site's light 300 body */
+      line-height: 1.8; /* roomier rows */
+      color: var(--text);
+    }
+    .article-body :global(p) { margin: 0 0 1.5em; } /* more air between paragraphs */
+    .article-body :global(h2) { margin-top: 2.5rem; }
     .article-body :global(figure) { margin: 2rem 0; }
     .article-body :global(figcaption) {
       color: var(--text-muted);

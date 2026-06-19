@@ -24,24 +24,17 @@ const scriptUrl = (base + '/article-scripts/children-education.js').replace(/\/+
   @import url("https://fonts.googleapis.com/css2?family=Roboto+Mono&display=swap");
 
   .education-explorer {
-    --edu-color: rgb(190 124 200);
-    --edu-color-50: rgb(190 124 200 / 50%);
-    --edu-color-30: rgb(190 124 200 / 30%);
-    --edu-color-10: rgb(190 124 200 / 10%);
-    --edu-color-dark: rgb(130 72 138);
+    --edu-color: rgb(45, 212, 191);
+    --edu-color-50: rgba(45, 212, 191, 0.5);
+    --edu-color-30: rgba(45, 212, 191, 0.3);
+    --edu-color-10: rgba(45, 212, 191, 0.1);
+    --edu-color-dark: rgb(30, 140, 127);
   }
 
   .education-explorer .subtitle {
     text-align: center;
     font-style: italic;
     margin: -0.5rem 0 2rem;
-  }
-
-  .education-explorer .mainQuestion {
-    margin-left: 1.25rem;
-    border-left: 10px solid var(--edu-color-50);
-    padding: 1rem 1.25rem;
-    background-color: var(--edu-color-10);
   }
 
   /* Histogram + its toggle buttons */
@@ -71,7 +64,7 @@ const scriptUrl = (base + '/article-scripts/children-education.js').replace(/\/+
   }
   .education-explorer #select1990,
   .education-explorer #select2020 {
-    background: var(--edu-color-30);
+    background: var(--edu-color-50);
     color: #fff;
     font-weight: bold;
   }

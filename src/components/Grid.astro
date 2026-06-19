@@ -14,4 +14,8 @@
   @media (max-width: 680px) {
     .grid { grid-template-columns: 1fr; gap: 54px; }
   }
+  /* On very wide screens, fit more (smaller) cards instead of bigger ones. */
+  @media (min-width: 100rem) {
+    .grid { grid-template-columns: repeat(3, 1fr); }
+  }
 </style>

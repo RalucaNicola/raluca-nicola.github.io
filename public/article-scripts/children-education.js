@@ -16,7 +16,7 @@
     Home
   ) => {
     function createHistogram(data, container) {
-      const selectedColor = `rgb(190 124 200)`;
+      const selectedColor = `rgba(24, 165, 146, 0.9)`;
 
       // Create container
       const width = 500;

@@ -1,0 +1,240 @@
+---
+title: "My Californian Adventure"
+description: "A story map of the highlights of my work and holiday trip to California."
+date: 2022-08-01
+cover: "/images/california/big-sur.jpg"
+coverAlt: "View over the ocean at Andrew Molera State Park, Big Sur."
+tags: ["Travel", "Maps"]
+---
+
+import StoryMap from '~/components/viz/StoryMap.astro';
+import StorySection from '~/components/viz/StorySection.astro';
+import Caption from '~/components/viz/Caption.astro';
+import Gallery from '~/components/viz/Gallery.astro';
+
+I spent July 2022 in California, working in Redlands and travelling from San Diego
+to San Francisco. This story map shows the highlights of my journey, scroll along!
+
+<picture>
+  <source media="(max-width: 640px)" srcset="/images/california/holiday-intro-mobile.png" />
+  <img
+    src="/images/california/holiday-intro-desktop.png"
+    alt="A map showing the sketched route of my Californian adventure"
+    class="invert-on-dark"
+  />
+</picture>
+
+
+<StoryMap
+  id="california"
+  trackUrl="/article-data/california-track.geojson"
+  pointsUrl="/article-data/california-points.geojson"
+>
+
+<StorySection progress={0} center={[-117.17, 32.70]} zoom={11}>
+
+## San Diego
+
+After working in Redlands for 2 weeks, I got to spend a week in San Diego helping
+out at Esri's User Conference. I didn't get to do much visiting, but I really
+enjoyed hanging out at the Coronado Island in my free time. In front of the
+conference center you can take a boat to the island and if you're lucky you can
+catch a nice sunset, a beautiful concert and spectacular views of downtown San Diego.
+
+<video controls playsinline preload="metadata" style="width: 100%; border-radius: 6px;">
+  <source src="/images/california/san-diego.mp4" type="video/mp4" />
+  Your browser doesn't support embedded video.
+</video>
+
+<Caption>
+Boat ride from Coronado Island to the conference center with a concert at the
+Rady Shell. <img src="/images/california/music.png" alt="A stickman playing music." class="invert-on-dark" style="max-width: 50px;" />
+</Caption>
+
+![An image of San Diego downtown at sunset.](/images/california/san-diego.jpg)
+<Caption>
+<img src="/images/california/sun.png" alt="A sun." class="invert-on-dark" style="max-width: 50px;" />View of San Diego from the Coronado island with a beautiful sunset. 
+</Caption>
+
+</StorySection>
+
+<StorySection progress={0.178} center={[-117.85, 33.55]}>
+
+## Train trip to Los Angeles
+
+After one week in San Diego I travelled to Los Angeles to meet my friend Josefin
+and start our road trip. I had some issues with my credit card so I couldn't
+rent a car. So I did the next best thing, I took the Pacific Surfliner. And it was
+an amazing experience, I couldn't believe how close we were to the beach. And trains
+in the US are luxury, you have so much space for legs and luggage.
+
+![Me in the train from San Diego to Los Angeles.](/images/california/train-ride.jpg)
+<Caption>
+Awesome ocean views on the train from San Diego to Los Angeles.
+</Caption>
+
+</StorySection>
+
+<StorySection progress={0.178} center={[-118.30, 34.07]} zoom={10}>
+
+## Los Angeles
+
+While in Los Angeles, we tried our best to do the touristy things tourists do. We
+walked the Walk of Fame, went fancy on Rodeo Drive, hiked up to Griffith Observatory,
+played beach volleyball at Santa Monica beach, rode our bikes to Venice Beach and we
+even went for a Frank Sinatra tribute concert at the Hollywood Bowl (and missed the
+first part because we got stuck in traffic and couldn't find parking, hehe).
+
+<Gallery cols={2}>
+
+![Panoramic view from Griffith Observatory.](/images/california/griffith-observatory.jpg)
+
+![The concert at the Hollywood Bowl.](/images/california/hollywood.jpg)
+
+</Gallery>
+<Caption>
+Views from Griffith Observatory towards LA and the Hollywood sign.
+</Caption>
+
+![The concert at the Hollywood Bowl.](/images/california/hollywood-bowl.jpg)
+<Caption>
+Frank Sinatra and Peggy Lee tribute concert at the Hollywood Bowl.
+</Caption>
+</StorySection>
+
+<StorySection progress={0.26} center={[-117.784, 33.545]}>
+
+## Laguna Beach
+<img src="/images/california/palmtree.png" alt="A palm tree." class="invert-on-dark" style="max-width: 100px; display: block; margin: 0 auto;" />
+
+A bit south of Los Angeles, Laguna Beach is a beautiful, exotic beach. We drove down
+for the day.
+
+![Laguna Beach.](/images/california/laguna-beach.jpeg)
+
+</StorySection>
+
+<StorySection progress={0.4} center={[-118.833, 34.024]}>
+
+## Zuma Beach
+
+Malibu? Malibu. I love the beaches in California, so wide and empty, an awesome place
+to relax. At Zuma Beach we were lucky to see dolphins, but unfortunately they were
+camera shy so we couldn't get a nice movie of their jumps :)
+
+![Josefin and I at Zuma Beach.](/images/california/zuma-beach.jpg)
+
+</StorySection>
+
+<StorySection progress={0.5} center={[-119.699, 34.407]}>
+
+## Santa Barbara
+
+Santa Barbara is an awesome little town by the beach. We rode bikes, went to the
+bookshop, chilled at the beach, did yoga on a rooftop by the beach, and we ate really
+good food. The main street is closed for cars and has bike lanes — how awesome is that!
+
+![Sunset in Santa Barbara.](/images/california/santa-barbara-sunset.jpg)
+![Santa Barbara main street.](/images/california/santa-barbara.jpg)
+<Caption>
+The main street is closed for cars and has bike lanes — how awesome is that!
+</Caption>
+
+</StorySection>
+
+<StorySection progress={0.664} center={[-120.635, 35.122]}>
+
+## Pismo Beach
+
+What happens in Pismo Beach, stays in Pismo Beach... well, nothing exciting happened,
+except that we found out that Bugs Bunny likes to make holidays here.
+
+<Gallery cols={2}>
+![Pismo Beach.](/images/california/pismo-beach.jpg)
+
+![Bugs Bunny at Pismo Beach.](/images/california/pismo-bugs-bunny.png)
+</Gallery>
+
+</StorySection>
+
+<StorySection progress={0.805} center={[-121.85, 36.29]}>
+
+## Big Sur
+
+We did a little hike here. It was good to get the blood pumping after all that
+chilling at the beach :) but guess what, in the middle of the hike we ended up by a
+beautiful beach, so we were chilling there some more, hehe.
+
+<Gallery cols={2}>
+
+![View over the ocean at Andrew Molera State Park.](/images/california/big-sur.jpg)
+
+![A beach at Andrew Molera State Park.](/images/california/big-sur-beach.jpg)
+
+</Gallery>
+
+</StorySection>
+
+<StorySection progress={0.9} center={[-121.912, 36.557]}>
+
+## Carmel by the Sea
+
+This charming little town seems to have very strict urban planning rules, and this
+helped it preserve its authenticity over the years. In San Francisco I met someone
+who grew up in Carmel and she said: "Nothing changed over there in the past 40 years".
+And I mean, look at those photos — I think it's awesome that nothing changed, it's
+beautiful!
+
+![Beach at Carmel by the Sea.](/images/california/carmel-beach.jpg)
+![Beach at Carmel by the Sea.](/images/california/carmel-beach-2.jpg)
+
+<Gallery cols={3}>
+
+![City view at Carmel by the Sea.](/images/california/carmel-city-1.jpg)
+
+![City view at Carmel by the Sea.](/images/california/carmel-city-2.jpg)
+
+![City view at Carmel by the Sea.](/images/california/carmel-city-3.jpg)
+
+</Gallery>
+
+</StorySection>
+
+<StorySection progress={.98} center={[-122.43, 37.77]} zoom={9}>
+
+## San Francisco
+
+My stay in San Francisco started with the 5k run in the 45th SF Marathon. I find
+these 5k runs super fun — good distance to run and the atmosphere is always nice.
+It started at 7:30, so by 8:00 I was already pumped up with adrenaline and ready to start the day.
+Later in the morning I joined a meetup to learn Spanish and met a lovely bunch of people.
+And even later I rented a bike and was cruising around the city. I really liked Dolores Park,
+it has nice views of downtown and it's a very cheerful place. 
+![Mission Dolores Park in San Francisco.](/images/california/sf-dolorespark.jpg)
+In the afternoon we
+visited Alcatraz, a former military prison — it was very interesting to learn about
+the prisoners' lives and what they went through while imprisoned there.
+
+![The Alcatraz island.](/images/california/alcatraz.jpg)
+
+
+</StorySection>
+
+<StorySection progress={1} center={[-122.568, 37.893]} zoom={9}>
+
+## Muir Woods
+
+We didn't get much farther up north to see the redwood trees, so we went close by San
+Francisco to Muir Woods National Monument. A friend of mine recommended this park and
+I was thankful because it's really beautiful.
+
+![Muir Woods.](/images/california/muirwoods.jpg)
+
+</StorySection>
+
+</StoryMap>
+
+<img src="/images/california/palmtree.png" alt="A palmtree." class="invert-on-dark" style="max-width: 400px; display: block; margin: 0 auto;" />
+And... then we flew back to Switzerland 😜
+
+*Map created with [MapLibre](https://maplibre.org/) and [Carto](https://carto.com/) basemaps. Images and sketches by Raluca Nicola and Josefin Lilja.*

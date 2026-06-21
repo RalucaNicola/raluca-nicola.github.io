@@ -3,7 +3,7 @@
   --bg: #fbfaf6;
   --surface: #ffffff;
   --text: #1a1813;
-  --text-muted: #9a968a;
+  --text-muted: #767268;
   --border: #e9e6dd;
   --accent: #0fa39a;
   --accent-soft: #def1ee;
@@ -42,7 +42,7 @@
   --bg: #16140f;
   --surface: #1e1b15;
   --text: #ece8de;
-  --text-muted: #8f8b7e;
+  --text-muted: #b0ada3;
   --border: #2a2822;
   --accent: #2dd4bf;
   --accent-soft: #16302d;
@@ -90,6 +90,10 @@ a {
 a:hover { text-decoration: underline; }
 
 img { max-width: 100%; height: auto; display: block; }
+
+/* Black-on-transparent line art -> white on dark theme (alpha is preserved). */
+.invert-on-dark { transition: filter 0.2s ease; }
+:root[data-theme="dark"] .invert-on-dark { filter: invert(1); }
 
 h1, h2, h3, h4 {
   font-family: var(--font-serif);

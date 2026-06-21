@@ -1,0 +1,46 @@
+---
+// Small, centered caption / annotation text. Inline images (e.g. little sketch
+// icons) flow with the text, so you can write:
+//
+//   <Caption>
+//     Some note here. <img src="/icon.png" alt="" style="max-width: 50px;" />
+//   </Caption>
+//
+// Keep the <img> on the same line as the surrounding text so MDX folds it into
+// the same paragraph.
+interface Props {
+  class?: string;
+}
+const { class: className } = Astro.props;
+---
+
+<div class:list={['caption', className]}>
+  <slot />
+</div>
+
+<style>
+  .caption {
+    max-width: 36rem;
+    margin: 0.5rem auto 1.5rem;
+    text-align: center;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: var(--text-muted);
+  }
+
+  /* If MDX wraps the text in a <p>, render it inline so any trailing image stays
+     on the same line and the whole thing reads as one centered caption. */
+  .caption :global(p) {
+    display: inline;
+    margin: 0;
+  }
+
+  .caption :global(img) {
+    display: inline-block;
+    vertical-align: middle;
+  }
+
+  .caption :global(a) {
+    color: var(--accent);
+  }
+</style>

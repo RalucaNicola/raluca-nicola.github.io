@@ -1,0 +1,69 @@
+---
+// A narrative section for <StoryMap>. Drop these inside a <StoryMap>; markdown
+// written between the tags (separated by blank lines) renders as the card text.
+//
+// The parent StoryMap script reads the data-* attributes to drive the camera and
+// route animation, so this component is intentionally just markup + styling.
+
+interface Props {
+  /** Cumulative route progress (0..1) reached at the END of this section. */
+  progress?: number;
+  /** Camera centre [lng, lat] flown to when this section becomes active. */
+  center?: [number, number];
+  zoom?: number;
+  bearing?: number;
+  pitch?: number;
+  /** Alternative camera: fit these [[w,s],[e,n]] bounds instead of center/zoom. */
+  bounds?: [[number, number], [number, number]];
+}
+
+const { progress, center, zoom = 6, bearing, pitch, bounds } = Astro.props;
+
+// Serialize array/number props into data-* attributes (undefined ones are dropped).
+const data: Record<string, string> = {};
+if (progress !== undefined) data['data-progress'] = String(progress);
+if (center !== undefined) data['data-center'] = JSON.stringify(center);
+if (zoom !== undefined) data['data-zoom'] = String(zoom);
+if (bearing !== undefined) data['data-bearing'] = String(bearing);
+if (pitch !== undefined) data['data-pitch'] = String(pitch);
+if (bounds !== undefined) data['data-bounds'] = JSON.stringify(bounds);
+---
+
+<section class="storymap-section" {...data}>
+  <div class="storymap-card">
+    <slot />
+  </div>
+</section>
+
+<style>
+  .storymap-section {
+    min-height: 90vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Keep content centered in the area ABOVE the docked map band. */
+    padding: 2rem clamp(1rem, 5vw, 3rem)
+      calc(var(--band-height, 200px) + 2rem);
+    pointer-events: none; /* let clicks fall through the empty gaps */
+  }
+
+  .storymap-card {
+    width: min(46rem, 100%);
+    pointer-events: auto; /* re-enable clicks (section sets pointer-events: none) */
+  }
+
+  /* Tighten the markdown rhythm inside the card. */
+  .storymap-card :global(> :first-child) { margin-top: 0; }
+  .storymap-card :global(> :last-child) { margin-bottom: 0; }
+  .storymap-card :global(h2),
+  .storymap-card :global(h3) { margin-top: 0; }
+  .storymap-card :global(p) { margin: 0 0 0.75em; }
+  .storymap-card :global(img) {
+    max-width: 100%;
+    border-radius: calc(var(--radius) - 4px);
+  }
+
+  @media (max-width: 640px) {
+    .storymap-card { max-width: 100%; }
+  }
+</style>

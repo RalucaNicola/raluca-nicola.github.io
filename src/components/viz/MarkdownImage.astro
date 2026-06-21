@@ -6,10 +6,13 @@ interface Props {
   alt?: string;
 }
 const { src, alt, ...rest } = Astro.props;
-const href = typeof src === 'string' ? src : src.src;
+const rawHref = typeof src === 'string' ? src : src.src;
+// `?invert` (or `&invert`) marks line art that should flip to white on dark theme.
+const invert = /[?&]invert\b/.test(rawHref);
+const href = rawHref.replace(/[?&]invert\b/, '').replace(/[?&]$/, '');
 ---
 <button type="button" class="md-image-zoom" aria-label="Enlarge image">
-  <img src={href} alt={alt ?? ''} {...rest} />
+  <img src={href} alt={alt ?? ''} class={invert ? 'invert-on-dark' : undefined} {...rest} />
 </button>
 
 <style>

@@ -1,0 +1,483 @@
+---
+// Reusable scroll-driven story map.
+//
+// Usage in MDX:
+//   import StoryMap from '~/components/viz/StoryMap.astro';
+//   import StorySection from '~/components/viz/StorySection.astro';
+//
+//   <StoryMap id="my-trip" trackUrl="/article-data/trip-track.geojson"
+//             pointsUrl="/article-data/trip-points.geojson">
+//     <StorySection progress={0} center={[8.54, 47.37]} zoom={11}>
+//       ## First stop
+//       Some markdown text (keep blank lines around it).
+//     </StorySection>
+//     ...more <StorySection>s...
+//   </StoryMap>
+//
+// A MapLibre map is docked as a band at the bottom of the viewport. As the reader
+// scrolls the sections above it, the camera flies between waypoints and the route
+// is progressively drawn up to each section's `progress` (0..1).
+
+interface Props {
+  id: string;
+  trackUrl: string;
+  pointsUrl?: string;
+  styleUrl?: string;
+  /** Height of the bottom map band, any CSS length. Defaults to a viewport-relative
+   *  value so the band is taller on taller screens (clamped between 200px and 460px). */
+  height?: string;
+  /** Fallback view before the first section (otherwise the whole track is framed). */
+  initialView?: { center: [number, number]; zoom: number };
+  routeColor?: string;
+  trackColor?: string;
+  routeWidth?: number;
+}
+
+const {
+  id,
+  trackUrl,
+  pointsUrl,
+  styleUrl = 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
+  height = 'clamp(200px, 30dvh, 460px)',
+  initialView,
+  routeColor,
+  trackColor,
+  routeWidth = 4,
+} = Astro.props;
+
+const base = import.meta.env.BASE_URL;
+const resolve = (u?: string) =>
+  u ? (u.startsWith('http') ? u : (base + u).replace(/\/+/g, '/')) : undefined;
+---
+
+<div
+  class="storymap"
+  id={id}
+  data-track-url={resolve(trackUrl)}
+  data-points-url={resolve(pointsUrl)}
+  data-style-url={styleUrl}
+  data-initial-view={initialView ? JSON.stringify(initialView) : undefined}
+  data-route-color={routeColor}
+  data-track-color={trackColor}
+  data-route-width={routeWidth}
+  style={`--band-height: ${height}`}
+>
+  <div class="storymap-sections">
+    <slot />
+  </div>
+  <div class="storymap-map">
+    <noscript>This interactive story map requires JavaScript.</noscript>
+  </div>
+</div>
+
+<style>
+  .storymap {
+    /* Full-bleed breakout from the reading column (no transform: keeps sticky safe). */
+    position: relative;
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+  }
+
+  .storymap-sections {
+    position: relative;
+    z-index: 1;
+    /* Reserve space so the final content can scroll clear of the docked band. */
+    padding-bottom: var(--band-height);
+  }
+
+  /* The map is fixed to the bottom of the viewport (immune to ancestor overflow /
+     flex / transform, unlike position: sticky). It is slid into view only while the
+     story is on screen, toggled by the `is-active` class from the script. */
+  .storymap-map {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: var(--band-height);
+    z-index: 40;
+    border-top: 1px solid var(--border);
+    background: var(--bg);
+    box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.14);
+    transform: translateY(110%);
+    transition: transform 0.35s ease;
+    pointer-events: none;
+  }
+
+  .storymap.is-active .storymap-map {
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .storymap-map { transition: none; }
+  }
+
+  /* MapLibre paints into a child canvas; make sure it fills the band. */
+  .storymap-map :global(.maplibregl-map) {
+    height: 100%;
+    width: 100%;
+  }
+</style>
+
+<script>
+  import maplibregl from 'maplibre-gl';
+  import 'maplibre-gl/dist/maplibre-gl.css';
+  import {
+    extractLine,
+    cumulativeDistances,
+    sliceLine,
+    pointAt,
+    type Coord,
+    type TrackMetrics,
+  } from '~/utils/track';
+
+  interface SectionConfig {
+    el: HTMLElement;
+    start: number; // route progress at the top of this section
+    end: number; // route progress at the bottom of this section
+    camera: {
+      center?: [number, number];
+      zoom?: number;
+      bearing?: number;
+      pitch?: number;
+      bounds?: [[number, number], [number, number]];
+    };
+  }
+
+  const num = (v: string | undefined) =>
+    v === undefined || v === '' ? undefined : Number(v);
+  const json = <T,>(v: string | undefined): T | undefined => {
+    if (!v) return undefined;
+    try {
+      return JSON.parse(v) as T;
+    } catch {
+      return undefined;
+    }
+  };
+
+  function cssVar(host: HTMLElement, name: string, fallback: string) {
+    const v = getComputedStyle(host).getPropertyValue(name).trim();
+    return v || fallback;
+  }
+
+  function buildSections(host: HTMLElement): SectionConfig[] {
+    const els = Array.from(
+      host.querySelectorAll<HTMLElement>('.storymap-section')
+    );
+    const n = els.length;
+
+    // Resolve each section's END progress: explicit value, else evenly spaced.
+    // Force monotonic non-decreasing so the route never runs backwards.
+    let prevEnd = 0;
+    const sections: SectionConfig[] = els.map((el, i) => {
+      const explicit = num(el.dataset.progress);
+      let end = explicit !== undefined ? explicit : (i + 1) / n;
+      end = Math.min(Math.max(end, prevEnd), 1);
+      const start = i === 0 ? 0 : prevEnd;
+      prevEnd = end;
+      return {
+        el,
+        start,
+        end,
+        camera: {
+          center: json<[number, number]>(el.dataset.center),
+          zoom: num(el.dataset.zoom),
+          bearing: num(el.dataset.bearing),
+          pitch: num(el.dataset.pitch),
+          bounds: json<[[number, number], [number, number]]>(el.dataset.bounds),
+        },
+      };
+    });
+    return sections;
+  }
+
+  function init(host: HTMLElement) {
+    if (host.dataset.initialized) return;
+    host.dataset.initialized = '1';
+
+    const mapEl = host.querySelector<HTMLElement>('.storymap-map');
+    if (!mapEl) return;
+
+    const trackUrl = host.dataset.trackUrl;
+    const pointsUrl = host.dataset.pointsUrl;
+    const styleUrl = host.dataset.styleUrl!;
+    const initialView = json<{ center: [number, number]; zoom: number }>(
+      host.dataset.initialView
+    );
+    const routeColor = host.dataset.routeColor || cssVar(host, '--accent', '#0fa39a');
+    const trackColor =
+      host.dataset.trackColor || cssVar(host, '--text-muted', '#9a968a');
+    const labelColor = '#1a1813';
+    const routeWidth = num(host.dataset.routeWidth) ?? 4;
+
+    const sections = buildSections(host);
+
+    const sourceId = `${host.id}-route`;
+    const progressId = `${host.id}-progress`;
+    const headId = `${host.id}-head`;
+    const pointsId = `${host.id}-points`;
+
+    const map = new maplibregl.Map({
+      container: mapEl,
+      style: styleUrl,
+      center: initialView?.center ?? [0, 20],
+      zoom: initialView?.zoom ?? 1,
+      interactive: false, // scroll position drives the map, not the pointer
+      attributionControl: { compact: true },
+    });
+
+    let coords: Coord[] = [];
+    let metrics: TrackMetrics = { xs: [], dxs: [], total: 0 };
+    let ready = false;
+    let activeIndex = -1;
+
+    const emptyLine = {
+      type: 'Feature' as const,
+      geometry: { type: 'LineString' as const, coordinates: [] as number[][] },
+      properties: {},
+    };
+
+    function draw(fraction: number) {
+      if (!ready || coords.length < 2) return;
+      const sliced = sliceLine(coords, metrics, fraction);
+      (map.getSource(progressId) as maplibregl.GeoJSONSource)?.setData({
+        type: 'Feature',
+        geometry: { type: 'LineString', coordinates: sliced },
+        properties: {},
+      });
+      const head = pointAt(coords, metrics, fraction);
+      (map.getSource(headId) as maplibregl.GeoJSONSource)?.setData({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: head },
+        properties: {},
+      });
+    }
+
+    function flyToSection(s: SectionConfig) {
+      if (s.camera.bounds) {
+        map.fitBounds(s.camera.bounds, { padding: 60, duration: 1400 });
+        return;
+      }
+      if (s.camera.center) {
+        map.flyTo({
+          center: s.camera.center,
+          zoom: s.camera.zoom ?? map.getZoom(),
+          bearing: s.camera.bearing ?? 0,
+          pitch: s.camera.pitch ?? 0,
+          duration: 1400,
+        });
+        return;
+      }
+      // No explicit camera: follow the route head for this section.
+      if (ready && coords.length >= 2) {
+        map.flyTo({ center: pointAt(coords, metrics, s.end), duration: 1400 });
+      }
+    }
+
+    // Mirrors the old holiday-map scroll math: a section's progress is how far its
+    // body has passed the vertical centre of the viewport (0..1).
+    function sectionFraction(el: HTMLElement) {
+      const rect = el.getBoundingClientRect();
+      const vh = window.innerHeight || document.documentElement.clientHeight;
+      return (vh / 2 - rect.top) / rect.height;
+    }
+
+    function update() {
+      if (!sections.length) return;
+      const vh = window.innerHeight || document.documentElement.clientHeight;
+
+      // Find the active section (its body straddles the viewport centre).
+      let idx = -1;
+      for (let i = 0; i < sections.length; i++) {
+        const f = sectionFraction(sections[i].el);
+        if (f >= 0 && f <= 1) {
+          idx = i;
+          break;
+        }
+      }
+
+      let progress: number;
+      let cameraIdx: number;
+      if (idx === -1) {
+        // Above the first section, or below the last one.
+        const firstTop = sections[0].el.getBoundingClientRect().top;
+        if (firstTop > vh / 2) {
+          progress = sections[0].start;
+          cameraIdx = 0;
+        } else {
+          progress = sections[sections.length - 1].end;
+          cameraIdx = sections.length - 1;
+        }
+      } else {
+        const s = sections[idx];
+        const f = Math.min(Math.max(sectionFraction(s.el), 0), 1);
+        progress = s.start + (s.end - s.start) * f;
+        cameraIdx = idx;
+      }
+
+      draw(progress);
+
+      if (cameraIdx !== activeIndex) {
+        activeIndex = cameraIdx;
+        flyToSection(sections[cameraIdx]);
+      }
+    }
+
+    let ticking = false;
+    function onScroll() {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        ticking = false;
+        update();
+      });
+    }
+
+    map.on('load', async () => {
+      // Route background (full track) + progress (drawn portion) + head dot.
+      try {
+        if (trackUrl) {
+          const data = await fetch(trackUrl).then((r) => r.json());
+          coords = extractLine(data);
+          metrics = cumulativeDistances(coords);
+
+          map.addSource(sourceId, {
+            type: 'geojson',
+            data: {
+              type: 'Feature',
+              geometry: { type: 'LineString', coordinates: coords },
+              properties: {},
+            },
+          });
+          map.addLayer({
+            id: sourceId,
+            type: 'line',
+            source: sourceId,
+            layout: { 'line-cap': 'round', 'line-join': 'round' },
+            paint: {
+              'line-color': trackColor,
+              'line-width': Math.max(routeWidth - 2, 1.5),
+              'line-opacity': 0.45,
+              'line-dasharray': [2, 2],
+            },
+          });
+
+          map.addSource(progressId, { type: 'geojson', data: emptyLine });
+          map.addLayer({
+            id: progressId,
+            type: 'line',
+            source: progressId,
+            layout: { 'line-cap': 'round', 'line-join': 'round' },
+            paint: { 'line-color': routeColor, 'line-width': routeWidth },
+          });
+
+          map.addSource(headId, {
+            type: 'geojson',
+            data: {
+              type: 'Feature',
+              geometry: { type: 'Point', coordinates: coords[0] ?? [0, 0] },
+              properties: {},
+            },
+          });
+          map.addLayer({
+            id: headId,
+            type: 'circle',
+            source: headId,
+            paint: {
+              'circle-radius': 3,
+              'circle-color': routeColor,
+              'circle-stroke-color': '#ffffff',
+              'circle-stroke-width': 2,
+            },
+          });
+        }
+
+        // Optional waypoint markers.
+        if (pointsUrl) {
+          const pts = await fetch(pointsUrl).then((r) => r.json());
+          map.addSource(pointsId, { type: 'geojson', data: pts });
+          map.addLayer({
+            id: pointsId,
+            type: 'circle',
+            source: pointsId,
+            paint: {
+              'circle-radius': 3,
+              'circle-color': '#ffffff',
+              'circle-stroke-color': routeColor,
+              'circle-stroke-width': 2.5,
+            },
+          });
+
+          // Labels. Reuse a font the basemap already loads so glyphs resolve.
+          const basemapFont = (() => {
+            for (const l of map.getStyle().layers ?? []) {
+              const f = (l.layout as any)?.['text-font'];
+              if (Array.isArray(f) && f.length) return f as string[];
+            }
+            return ['Open Sans Regular'];
+          })();
+
+          map.addLayer({
+            id: `${pointsId}-labels`,
+            type: 'symbol',
+            source: pointsId,
+            layout: {
+              'text-field': ['get', 'name'],
+              'text-font': basemapFont,
+              'text-size': 12,
+              'text-anchor': 'left',
+              'text-offset': [0.7, 0],
+              'text-max-width': 8,
+            },
+            paint: {
+              'text-color': labelColor,
+              'text-halo-color': '#ffffff',
+              'text-halo-width': 1.5,
+            },
+          });
+        }
+
+        ready = true;
+
+        // Frame the whole track if no explicit initial view was given.
+        if (!initialView && coords.length >= 2) {
+          const bounds = coords.reduce(
+            (b, c) => b.extend(c as [number, number]),
+            new maplibregl.LngLatBounds(coords[0], coords[0])
+          );
+          map.fitBounds(bounds, { padding: 60, duration: 0 });
+        }
+      } catch {
+        ready = true; // still allow camera moves even if data failed to load
+      }
+
+      activeIndex = -1;
+      update();
+    });
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', () => {
+      map.resize();
+      onScroll();
+    });
+
+    // Slide the fixed band in only while the story is on screen, so it doesn't
+    // overlap the surrounding article / footer.
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          host.classList.toggle('is-active', entry.isIntersecting);
+          if (entry.isIntersecting) {
+            map.resize();
+            onScroll();
+          }
+        }
+      },
+      // Trigger a little before the story reaches the band region.
+      { rootMargin: '0px 0px -200px 0px' }
+    );
+    io.observe(host);
+  }
+
+  document.querySelectorAll<HTMLElement>('.storymap').forEach(init);
+</script>

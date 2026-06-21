@@ -1,0 +1,63 @@
+---
+// A simple image grid. Wrap 2–3 (or more) markdown images and they lay out in
+// equal columns; collapses to a single column on narrow screens.
+//
+//   <Gallery cols={2}>
+//   ![alt](/a.jpg)
+//
+//   ![alt](/b.jpg)
+//   </Gallery>
+//
+// Keep a blank line BETWEEN the images so MDX makes each its own grid cell.
+interface Props {
+  /** Number of columns on wide screens. Default 2. */
+  cols?: number;
+  /** Tile aspect ratio, e.g. "4 / 3", "1 / 1", "3 / 2". Use "auto" for natural. */
+  ratio?: string;
+  /** Gap between tiles. */
+  gap?: string;
+  class?: string;
+}
+const { cols = 2, ratio = '4 / 3', gap = '0.75rem', class: className } = Astro.props;
+---
+
+<div
+  class:list={['gallery', className]}
+  style={`--cols: ${cols}; --ratio: ${ratio}; --gap: ${gap};`}
+>
+  <slot />
+</div>
+
+<style>
+  .gallery {
+    display: grid;
+    grid-template-columns: repeat(var(--cols, 2), 1fr);
+    gap: var(--gap, 0.75rem);
+    margin: 1.5rem 0;
+    align-items: start;
+  }
+
+  /* MDX wraps each image in its own <p>; make those the grid cells. */
+  .gallery > :global(p) {
+    margin: 0;
+  }
+
+  /* The MarkdownImage zoom button should fill its cell. */
+  .gallery :global(.md-image-zoom) {
+    display: block;
+    width: 100%;
+  }
+
+  .gallery :global(img) {
+    width: 100%;
+    aspect-ratio: var(--ratio, 4 / 3);
+    object-fit: cover;
+    border-radius: 6px;
+  }
+
+  @media (max-width: 640px) {
+    .gallery {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

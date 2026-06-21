@@ -1,0 +1,9 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    { "type": "Feature", "properties": { "name": "Bellevue" }, "geometry": { "type": "Point", "coordinates": [6.780073, 45.873793] } },
+    { "type": "Feature", "properties": { "name": "Tête Rousse" }, "geometry": { "type": "Point", "coordinates": [6.817505, 45.854937] } },
+    { "type": "Feature", "properties": { "name": "Refuge du Goûter" }, "geometry": { "type": "Point", "coordinates": [6.830756, 45.851110] } },
+    { "type": "Feature", "properties": { "name": "Turnaround" }, "geometry": { "type": "Point", "coordinates": [6.840476, 45.843843] } }
+  ]
+}

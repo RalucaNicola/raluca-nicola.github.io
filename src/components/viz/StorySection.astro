@@ -42,14 +42,13 @@ if (bounds !== undefined) data['data-bounds'] = JSON.stringify(bounds);
     align-items: center;
     justify-content: center;
     /* Keep content centered in the area ABOVE the docked map band. */
-    padding: 2rem clamp(1rem, 5vw, 3rem)
-      calc(var(--band-height, 200px) + 2rem);
+    padding: 0.5rem clamp(1rem, 5vw, 3rem) 0.5rem;
     pointer-events: none; /* let clicks fall through the empty gaps */
   }
 
   .storymap-card {
+    pointer-events: auto;
     width: min(46rem, 100%);
-    pointer-events: auto; /* re-enable clicks (section sets pointer-events: none) */
   }
 
   /* Tighten the markdown rhythm inside the card. */

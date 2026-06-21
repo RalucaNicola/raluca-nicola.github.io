@@ -7,7 +7,7 @@
   }
 
   const root = document.querySelector(".education-explorer");
-  const csvUrl = (root && root.dataset.csvUrl) || "/article-data/years-of-schooling-histogram.csv";
+  const csvUrl = (root && root.dataset.csvUrl) || "/articles/children-education/data/years-of-schooling-histogram.csv";
 
   window.require(["esri/WebScene", "esri/views/SceneView", "esri/Color", "esri/widgets/Home"], (
     WebScene,

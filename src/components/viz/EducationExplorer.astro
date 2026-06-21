@@ -5,8 +5,8 @@
 // Styles are global but namespaced under `.education-explorer`, and the scripts
 // are only emitted on pages that use this component.
 const base = import.meta.env.BASE_URL;
-const dataUrl = (base + '/article-data/years-of-schooling-histogram.csv').replace(/\/+/g, '/');
-const scriptUrl = (base + '/article-scripts/children-education.js').replace(/\/+/g, '/');
+const dataUrl = (base + '/articles/children-education/data/years-of-schooling-histogram.csv').replace(/\/+/g, '/');
+const scriptUrl = (base + '/articles/children-education/scripts/children-education.js').replace(/\/+/g, '/');
 ---
 
 <div class="education-explorer" data-csv-url={dataUrl}>

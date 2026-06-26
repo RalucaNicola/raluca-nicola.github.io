@@ -1,0 +1,30 @@
+---
+title: "Global carbon dioxide in the atmosphere"
+description: "A visualization of the global distribution of carbon dioxide in the atmosphere."
+date: 2023-04-01
+cover: "/articles/global-carbon-dioxide/cover.webp"
+coverAlt: "A visualization of the global distribution of carbon dioxide in the atmosphere."
+tags: ["Data visualization", "Climate", "Maps"]
+featured: true
+---
+
+import CarbonDioxideScene from '~/components/viz/CarbonDioxideScene.astro';
+
+Carbon dioxide (CO₂) is a greenhouse gas: it lets the sunlight pass, but absorbs the long-wavelength
+energy radiating back from the Earth, just like the glass of a greenhouse. Greenhouse gases matter
+because they keep the atmosphere warm and make life on Earth possible. But over the last decades the
+concentration of CO₂ has kept rising to unprecedented levels because of human activity.
+
+I built a 3D map that visualizes a [reanalysis](https://www.youtube.com/watch?v=FAGobvUGl24) of CO₂
+concentrations as a regular 3D grid. The values are measured in 
+ppm (molecules of CO₂ per million molecules of dry air) and represent average measurements
+for the month of January of each year.
+
+<CarbonDioxideScene />
+
+CO₂ data for January 2005, 2010, 2015 and 2020 comes from the
+[CAMS global greenhouse gas reanalysis (Copernicus)](https://ads.atmosphere.copernicus.eu/cdsapp#!/dataset/cams-global-ghg-reanalysis-egg4-monthly?tab=overview),
+processed with [ArcGIS Pro](https://pro.arcgis.com/en/pro-app/latest/get-started/get-started.htm) and
+[xarray](https://docs.xarray.dev/en/stable/), and visualized with the
+[ArcGIS Maps SDK for JavaScript](https://developers.arcgis.com/javascript/). The reanalysis method is
+described in [this technical note](https://acp.copernicus.org/articles/23/3829/2023/).

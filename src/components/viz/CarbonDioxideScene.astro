@@ -1,0 +1,584 @@
+---
+const base = import.meta.env.BASE_URL;
+const dataBase = (base + '/articles/global-carbon-dioxide/').replace(/\/+/g, '/');
+---
+
+<link
+  rel="stylesheet"
+  href="https://js.arcgis.com/4.26/esri/themes/dark/main.css"
+/>
+<script
+  is:inline
+  type="module"
+  src="https://js.arcgis.com/calcite-components/1.0.7/calcite.esm.js"></script>
+<script is:inline src="https://js.arcgis.com/4.26/"></script>
+
+<figure class="viz-wide co2-figure">
+  <div id="co2-scene" class="co2-scene calcite-mode-dark" data-base={dataBase}>
+    <div id="viewDiv"></div>
+    <div id="menu">
+      <div id="description">
+        <div>
+          <div id="histogram"></div>
+          <div id="legend"></div>
+        </div>
+        <calcite-segmented-control
+          appearance="outline"
+          layout="horizontal"
+          scale="l"
+          id="yearToggle"
+          width="full"
+        >
+          <calcite-segmented-control-item value="2005"
+            >2005</calcite-segmented-control-item
+          >
+          <calcite-segmented-control-item value="2010"
+            >2010</calcite-segmented-control-item
+          >
+          <calcite-segmented-control-item value="2015"
+            >2015</calcite-segmented-control-item
+          >
+          <calcite-segmented-control-item value="2020" checked
+            >2020</calcite-segmented-control-item
+          >
+        </calcite-segmented-control>
+        <div>CO<sub
+            >2</sub
+          > emissions can come from: </div>
+        <p id="symbol-1">
+          <span class="symbolDescription">1</span> Burning gasoline or diesel for <b>vehicles</b> or <b>industry</b> (like manufacturing, mining, oil and gas production).
+        </p>
+        <p id="symbol-2">
+          <span class="symbolDescription">2</span> Wildfires caused by
+          deforestation.
+        </p>
+        <p id="symbol-3">
+          <span class="symbolDescription">3</span> Widespread agricultural fires.
+        </p>
+      </div>
+    </div>
+  </div>
+  <figcaption>
+    Interactive WebScene — CO<sub>2</sub> reanalysis voxels. Step through the years and
+    drag the histogram slider to filter by concentration.
+  </figcaption>
+</figure>
+
+<script is:inline define:vars={{ dataBase }}>
+  (function () {
+    if (typeof require === 'undefined') {
+      console.error('ArcGIS Maps SDK failed to load.');
+      return;
+    }
+    require([
+      'esri/WebScene',
+      'esri/views/SceneView',
+      'esri/geometry/Point',
+      'esri/geometry/Polyline',
+      'esri/core/reactiveUtils',
+      'esri/core/promiseUtils',
+      'esri/Graphic',
+      'esri/Color',
+      'esri/widgets/HistogramRangeSlider',
+    ], (
+      WebScene,
+      SceneView,
+      Point,
+      Polyline,
+      reactiveUtils,
+      promiseUtils,
+      Graphic,
+      Color,
+      HistogramRangeSlider
+    ) => {
+      const sceneContainer = document.getElementById('co2-scene');
+      const legendContainer = document.getElementById('legend');
+      const histograms = [];
+      const min = 363;
+      const max = 424;
+
+      const view = new SceneView({
+        container: 'viewDiv',
+        map: new WebScene({
+          portalItem: { id: '4010440a096e444ab9cb894511b13ad7' },
+        }),
+        qualityProfile: 'high',
+        ui: { components: [] },
+      });
+
+      view.ui.add(['zoom', 'navigation-toggle', 'compass'], 'top-right');
+
+      const createGradient = (colorStops) => {
+        const gradientColors = colorStops.map((c) => {
+          let { r, g, b } = c.color;
+          return `rgba(${r} ${g} ${b} / 60%) ${c.position * 100}%`;
+        });
+        return `linear-gradient(90deg, ${gradientColors.join(', ')})`;
+      };
+
+      const renderLegend = (colorStops) => {
+        legendContainer.innerHTML = `
+          <div class="gradientContainer">
+            <div class="transparent"></div>
+            <div style="background: ${createGradient(colorStops)}; left: 0px" class="legendColor"></div>
+          </div>
+          <div class="labels">
+            <div>${parseInt(min)} ppm</div>
+            <div>${parseInt(max)} ppm</div>
+          </div>
+        `;
+      };
+
+      const fetchStatistics = fetch(`${dataBase}statistics.json`).then((r) =>
+        r.json()
+      );
+
+      const setViewTimeExtent = (year) => {
+        view.timeExtent = {
+          start: new Date(`${year}-01-01 00:00:00+0000`),
+          end: new Date(`${year}-01-01 24:00:00+0000`),
+        };
+      };
+
+      promiseUtils
+        .eachAlways([fetchStatistics, view.when()])
+        .then((response) => {
+          window.view = view;
+          view.map.ground.navigationConstraint = { type: 'stay-above' };
+          const voxelLayer = view.map.findLayerById('1881fdcb77e-layer-64');
+          const statistics = response[0].value;
+
+          reactiveUtils.watch(
+            () => voxelLayer.loaded,
+            (loaded) => {
+              if (loaded) {
+                const style = voxelLayer.getVariableStyle(0);
+                let { colorStops } = style.transferFunction;
+                style.transferFunction.stretchRange = [min, max];
+                const displayHistogram = (year) => {
+                  for (const histogram of histograms) {
+                    if (histogram.year === parseInt(year)) {
+                      histogram.container.style.display = 'revert';
+                      voxelLayer.getVariableStyle(0).transferFunction.rangeFilter = {
+                        enabled: true,
+                        range: histogram.graphic.values,
+                      };
+                    } else {
+                      histogram.container.style.display = 'none';
+                    }
+                  }
+                };
+
+                document
+                  .getElementById('yearToggle')
+                  .addEventListener('calciteSegmentedControlChange', (event) => {
+                    const year = event.target.value;
+                    setViewTimeExtent(year);
+                    displayHistogram(year);
+                  });
+
+                for (const statistic of statistics) {
+                  const bins = [];
+                  const { year, values, counts, mean, std } = statistic;
+                  for (let i = 0; i < values.length - 1; i++) {
+                    bins.push({
+                      minValue: values[i],
+                      maxValue: values[i + 1],
+                      count: counts[i],
+                    });
+                  }
+                  const container = document.createElement('div');
+                  document.getElementById('histogram').appendChild(container);
+                  const histogram = new HistogramRangeSlider({
+                    container,
+                    bins,
+                    min,
+                    max,
+                    values: [mean + 2 * std, max],
+                    average: mean,
+                    precision: 2,
+                    labelFormatFunction: (value, type) => {
+                      if (type !== 'min' && type !== 'max') {
+                        return value;
+                      }
+                    },
+                    rangeType: 'between',
+                    excludedBarColor: new Color([10, 10, 10]),
+                    includedBarColor: '#009af2',
+                    dataLineCreatedFunction: (label, line) => {
+                      line.classList.add('dataLine');
+                    },
+                  });
+
+                  histogram.on(['thumb-change', 'thumb-drag'], (event) => {
+                    const { index, value } = event;
+                    const { rangeFilter } =
+                      voxelLayer.getVariableStyle(0).transferFunction;
+                    const newRange = [
+                      index === 0 ? value : rangeFilter.range[0],
+                      index === 1 ? value : rangeFilter.range[1],
+                    ];
+                    voxelLayer.getVariableStyle(0).transferFunction.rangeFilter = {
+                      enabled: true,
+                      range: newRange,
+                    };
+                  });
+
+                  histograms.push({ year, container, graphic: histogram });
+                }
+                displayHistogram(2020);
+                setViewTimeExtent(2020);
+
+                renderLegend(colorStops);
+              }
+            },
+            { once: true, initial: true }
+          );
+        })
+        .catch(console.error);
+
+      const symbols = [];
+      function updateOverlay() {
+        symbols.forEach((symbol) => {
+          const screenPoint = view.toScreen(symbol.mapPoint);
+          if (screenPoint) {
+            symbol.classList.remove('hidden');
+            symbol.style.top = `${screenPoint.y - symbol.clientHeight / 2}px`;
+            symbol.style.left = `${screenPoint.x - symbol.clientWidth}px`;
+          }
+        });
+        requestAnimationFrame(updateOverlay);
+      }
+      reactiveUtils.watch(
+        () => view.ready,
+        (ready) => {
+          if (ready) {
+            updateOverlay();
+          }
+        }
+      );
+
+      fetch(`${dataBase}locations.json`)
+        .then((r) => r.json())
+        .then((locations) => {
+          locations.features.forEach((feature) => {
+            const symbol = document.createElement('div');
+            symbol.classList.add('symbol', 'hidden');
+            symbol.innerHTML = feature.id;
+            const [longitude, latitude] = feature.geometry.coordinates;
+            symbol.mapPoint = new Point({
+              longitude,
+              latitude,
+              spatialReference: { wkid: 4326 },
+            });
+            const descriptionContainer = document.getElementById(
+              `symbol-${feature.id}`
+            );
+            sceneContainer.appendChild(symbol);
+            symbol.addEventListener('click', () => {
+              descriptionContainer.classList.add('highlight');
+              setTimeout(() => {
+                descriptionContainer.classList.remove('highlight');
+              }, 1000);
+            });
+            symbols.push(symbol);
+          });
+        });
+
+      // Vertical scale indicator: where the troposphere starts and ends.
+      const opacity = 0.4;
+      const indicatorSymbol = {
+        type: 'line-3d',
+        symbolLayers: [
+          {
+            type: 'line',
+            material: { color: [255, 255, 255, opacity] },
+            size: 0.75,
+            marker: {
+              type: 'style',
+              style: 'arrow',
+              placement: 'end',
+              color: [255, 255, 255, opacity],
+            },
+          },
+        ],
+      };
+
+      const getLabelGraphic = (height) => {
+        const pointGeometry = new Point({ x: 0, y: -90, z: height / 2 });
+        return new Graphic({
+          geometry: pointGeometry,
+          symbol: {
+            type: 'point-3d',
+            symbolLayers: [
+              {
+                type: 'text',
+                text: '20km altitude',
+                material: { color: [255, 255, 255, opacity] },
+                verticalAlignment: 'middle',
+                font: {
+                  size: 9,
+                  family: `"Avenir Next", Avenir, "Helvetica Neue", sans-serif`,
+                  weight: 'bold',
+                },
+              },
+            ],
+          },
+        });
+      };
+
+      const getIndicatorDown = (height, margin) =>
+        new Graphic({
+          geometry: new Polyline({
+            paths: [
+              [0, -90, height / 2 - margin],
+              [0, -90, 0],
+            ],
+          }),
+          symbol: indicatorSymbol,
+        });
+
+      const getIndicatorUp = (height, margin) =>
+        new Graphic({
+          geometry: new Polyline({
+            paths: [
+              [0, -90, height / 2 + margin],
+              [0, -90, height],
+            ],
+          }),
+          symbol: indicatorSymbol,
+        });
+
+      const getBoundingBox = (height) =>
+        new Graphic({
+          geometry: new Polyline({
+            paths: [
+              [-180, 90, height],
+              [180, 90, height],
+              [180, -90, height],
+              [-180, -90, height],
+              [-180, 90, height],
+            ],
+          }),
+          symbol: {
+            type: 'line-3d',
+            symbolLayers: [
+              {
+                type: 'line',
+                material: { color: [255, 255, 255, opacity] },
+                size: 0.75,
+                pattern: { type: 'style', style: 'dash' },
+              },
+            ],
+          },
+        });
+
+      const addVerticalScale = () => {
+        const exaggeration = 200;
+        const height = 20000 * exaggeration;
+        const margin = 2000 * exaggeration;
+        view.graphics.addMany([
+          getLabelGraphic(height),
+          getBoundingBox(height),
+          getIndicatorDown(height, margin),
+          getIndicatorUp(height, margin),
+        ]);
+      };
+
+      addVerticalScale();
+    });
+  })();
+</script>
+
+<style is:global>
+  /* Scoped under .co2-scene / .co2-figure so nothing leaks into the article.
+     Declared global because the histogram, legend and markers are created at
+     runtime and so never receive Astro's scoped-style hash. */
+  .co2-figure {
+    margin: 2rem auto;
+  }
+
+  .co2-scene {
+    position: relative;
+    height: min(78vh, 760px);
+    min-height: 520px;
+    width: 100%;
+    border-radius: 10px;
+    overflow: hidden;
+    background: rgb(33, 38, 40);
+    font-family: 'Avenir Next', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    color: #d1d1d1;
+  }
+
+  .co2-scene #viewDiv {
+    position: absolute;
+    inset: 0;
+    height: 100%;
+    width: 100%;
+  }
+
+  .co2-scene #menu {
+    position: absolute;
+    left: 20px;
+    top: 20px;
+    background-color: rgba(33, 38, 40, 0.9);
+    border-radius: 10px;
+    width: 360px;
+    box-shadow: 0 1px 4px rgb(0 0 0 / 80%);
+    z-index: 100;
+    max-height: calc(100% - 40px);
+    overflow: auto;
+    font-size: 1rem;
+  }
+
+  .co2-scene #description {
+    margin: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+  }
+
+  .co2-scene #description > p {
+    transition: background-color 1s;
+    margin: 0;
+  }
+
+  .co2-scene .hidden {
+    visibility: hidden;
+  }
+
+  .co2-scene .highlight {
+    background-color: #009af2;
+  }
+
+  .co2-scene .esri-histogram-range-slider {
+    z-index: 1;
+  }
+
+  .co2-scene sub {
+    vertical-align: baseline;
+    position: relative;
+    top: 0.4rem;
+  }
+
+  .co2-scene .labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    padding: 0 15px;
+  }
+
+  .co2-scene .gradientContainer {
+    margin: 0 30px;
+    padding-bottom: 15px;
+    border-right: 1px solid #d1d1d1;
+    border-left: 1px solid #d1d1d1;
+    position: relative;
+  }
+
+  .co2-scene .legendColor {
+    height: 20px;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+  }
+
+  .co2-scene #histogram {
+    margin: 0 30px;
+  }
+
+  .co2-scene .esri-widget {
+    background: transparent;
+  }
+
+  .co2-scene .esri-histogram-range-slider__slider-container {
+    margin-bottom: 0;
+  }
+
+  .co2-scene .esri-slider__label {
+    outline: none !important;
+  }
+
+  .co2-scene .transparent {
+    background: url(/articles/global-carbon-dioxide/transparency_pattern.svg) repeat-x;
+    height: 20px;
+  }
+
+  .co2-scene .symbol {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transition: transform 0.2s ease-in-out;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    filter: drop-shadow(2px 2px 5px rgba(0, 0, 0, 0.8));
+    width: 30px;
+    height: 30px;
+    z-index: 1;
+  }
+
+  .co2-scene .symbolDescription {
+    width: 25px;
+    height: 25px;
+    display: inline-block;
+    text-align: center;
+  }
+
+  .co2-scene .symbol,
+  .co2-scene .symbolDescription {
+    background-color: rgba(0, 0, 0, 0.4);
+    border: 2px solid rgba(255, 255, 255, 0.8);
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    color: white;
+  }
+
+  .co2-scene .symbol:hover {
+    transform: scale(1.3);
+    cursor: pointer;
+  }
+
+  .co2-scene .esri-histogram__label {
+    fill: #d1d1d1;
+  }
+
+  .co2-scene .esri-histogram__bar {
+    stroke-width: 1px;
+    stroke: #007ec7;
+  }
+
+  .co2-scene .dataLine {
+    stroke: #d1d1d1;
+    stroke-width: 2px;
+  }
+
+  .co2-scene #description a {
+    background-color: transparent;
+    padding: 0;
+    border: none;
+    color: #d1d1d1;
+    text-decoration: none;
+    border-bottom: 1px #d1d1d1 solid;
+    cursor: pointer;
+    transition: color 500ms;
+  }
+
+  .co2-scene #description a:hover {
+    color: #009af2;
+    border-color: #009af2;
+  }
+
+  @media (max-width: 700px) {
+    .co2-scene #menu {
+      left: 12px;
+      right: 12px;
+      top: revert;
+      bottom: 12px;
+      width: auto;
+      max-height: 45%;
+    }
+  }
+</style>

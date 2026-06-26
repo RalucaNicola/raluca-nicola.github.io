@@ -1,0 +1,49 @@
+---
+title: "How NetCDF stores multidimensional data"
+description: "Reading a netCDF-4 climate file directly in the browser to see how an N-dimensional array is really just a flat buffer with labeled axes."
+date: 2026-06-21
+tags: ["Data visualization", "Climate"]
+---
+
+import NetcdfSliceViewer from '~/components/viz/NetcdfSliceViewer.astro';
+
+Most of the climate and weather data you'll ever touch comes packaged as **NetCDF**. It's the standard format for gridded scientific data: temperature over a map, ocean salinity at depth, carbon dioxide through the atmosphere over time. The format has a reputation for being opaque — a binary blob you can only open with special tools. But the idea underneath it is simple, and we can see it directly by reading a real file *in your browser*, no server involved.
+
+The file in this article is `data_allhours_plev.nc` — atmospheric **carbon dioxide** from the European Centre for Medium-Range Weather Forecasts (ECMWF). It's 3.1 MB, and everything below is parsed live from those bytes when this page loads.
+
+## A variable is one big N-dimensional array
+
+The core idea: a NetCDF file holds one or more **variables**, and each variable is an array with one or more **dimensions**. Our CO₂ variable has four:
+
+```
+co2[ valid_time, pressure_level, latitude, longitude ]
+        4       ×       5        ×    241    ×    480     = 2,313,600 values
+```
+
+That's a 4-dimensional array. You can think of it as a stack of 2D maps: for every combination of a *time* (4 snapshots) and a *pressure level* (5 heights in the atmosphere), there's one full `latitude × longitude` map of the globe — 241 × 480 = 115,680 numbers. Twenty of those maps stacked together gives the 2.3 million values.
+
+## Dimensions carry no meaning — coordinates do
+
+An index like `latitude = 0` doesn't mean anything on its own. NetCDF stores a separate **coordinate variable** for each dimension that says what each index *is*: `latitude` is an array of 241 actual degrees (90° down to −90°), `longitude` is 480 values (0° to 359.25°), `pressure_level` lists the five heights in hPa, and `valid_time` stores four timestamps as "seconds since 1970".
+
+Alongside the numbers, each variable carries **attributes** — the metadata that makes the data self-describing: units (`kg kg⁻¹`), a long name, the fill value used for missing data, conventions followed. This is what makes NetCDF "self-describing": the file tells you how to interpret itself.
+
+## See it for yourself
+
+The panel below reads the file with [jsfive](https://github.com/usnistgov/jsfive) — a pure-JavaScript reader for HDF5, which is the container netCDF-4 is built on. It's two linked views of the same thing. On the **right**, open the boxes: pick a *time*, then a *pressure level*. The chosen lat/long map then renders as a heatmap in the panel **below**, where you can hover to read cells and click one to lock a single value. On the **left**, the `co2` variable is written out as **nested arrays** — an array of 4 (one per year), each an array of 5 (one per level), each a 241 × 480 grid. It stays collapsed with ellipses until you drill in, then it fills in the real numbers for wherever you are. The two views always show the same selection.
+
+<NetcdfSliceViewer />
+
+## It's all a flat buffer underneath
+
+Here's the part that surprises people. That "4-dimensional array" isn't stored as nested boxes — it's **one long, flat list of numbers**, laid out in row-major order. To find a single value, you flatten the four indices into one position:
+
+```
+index = ((time × 5 + level) × 241 + lat) × 480 + lon
+```
+
+The rightmost dimension (`longitude`) varies fastest, then `latitude`, then `pressure_level`, then `time`. When you switch time or level above, watch the highlighted span in the buffer strip jump: each 2D map is a contiguous 115,680-value block sitting end-to-end inside that 2.3-million-value buffer. Slicing is just arithmetic on offsets — which is exactly why these formats are fast even when files are enormous.
+
+## So, can you read NetCDF online?
+
+Yes — with a caveat worth knowing. This file is **netCDF-4** (it begins with the bytes `‰HDF`, so it's really HDF5 underneath). The popular `netcdfjs` library only reads the older classic **netCDF-3** format and won't open it; jsfive, which speaks HDF5, does. For genuinely large datasets the modern approach is to convert to **Zarr** and stream only the chunks you need over HTTP — but for a single few-megabyte file like this one, fetching and parsing it whole in the browser works beautifully.

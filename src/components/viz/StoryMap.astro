@@ -33,11 +33,19 @@ interface Props {
   routeWidth?: number;
 }
 
+// Default basemap: Esri "topographic" via the ArcGIS Basemap Styles service (v2),
+// which returns a MapLibre-compatible style.  Falls back to CARTO Voyager if the
+// key isn't set, so the site still builds/runs without it.
+const ARCGIS_KEY = import.meta.env.PUBLIC_ARCGIS_API_KEY;
+const DEFAULT_STYLE = ARCGIS_KEY
+  ? `https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles/arcgis/topographic?token=${ARCGIS_KEY}`
+  : 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json';
+
 const {
   id,
   trackUrl,
   pointsUrl,
-  styleUrl = 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
+  styleUrl = DEFAULT_STYLE,
   height = 'clamp(200px, 30dvh, 460px)',
   initialView,
   routeColor,

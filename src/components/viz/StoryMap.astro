@@ -74,6 +74,14 @@ const resolve = (u?: string) =>
     <slot />
   </div>
   <div class="storymap-map">
+    <button type="button" class="storymap-expand" aria-label="Expand map" title="Expand map" aria-pressed="false">
+      <svg class="i-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M8 3H5a2 2 0 0 0-2 2v3 M16 3h3a2 2 0 0 1 2 2v3 M21 16v3a2 2 0 0 1-2 2h-3 M3 16v3a2 2 0 0 0 2 2h3" />
+      </svg>
+      <svg class="i-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M6 6l12 12 M18 6L6 18" />
+      </svg>
+    </button>
     <noscript>This interactive story map requires JavaScript.</noscript>
   </div>
 </div>
@@ -124,6 +132,40 @@ const resolve = (u?: string) =>
   .storymap-map :global(.maplibregl-map) {
     height: 100%;
     width: 100%;
+  }
+
+  /* Expand button (top-right of the map). */
+  .storymap-expand {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 2;
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+  }
+  .storymap-expand:hover { color: var(--accent); border-color: var(--accent); }
+  .storymap-expand svg { width: 18px; height: 18px; }
+  .storymap-expand .i-close { display: none; }
+  .storymap.is-expanded .storymap-expand .i-open { display: none; }
+  .storymap.is-expanded .storymap-expand .i-close { display: block; }
+
+  /* Expanded: the fixed band grows to fill the whole viewport, above everything. */
+  .storymap.is-expanded .storymap-map {
+    top: 0;
+    height: 100vh;
+    height: 100dvh;
+    z-index: 500;
+    transform: none;
+    pointer-events: auto;
   }
 </style>
 
@@ -238,6 +280,7 @@ const resolve = (u?: string) =>
     let metrics: TrackMetrics = { xs: [], dxs: [], total: 0 };
     let ready = false;
     let activeIndex = -1;
+    let expanded = false; // full-viewport interactive mode
 
     const emptyLine = {
       type: 'Feature' as const,
@@ -291,6 +334,7 @@ const resolve = (u?: string) =>
     }
 
     function update() {
+      if (expanded) return; // manual interaction owns the camera while expanded
       if (!sections.length) return;
       const vh = window.innerHeight || document.documentElement.clientHeight;
 
@@ -474,6 +518,7 @@ const resolve = (u?: string) =>
     // overlap the surrounding article / footer.
     const io = new IntersectionObserver(
       (entries) => {
+        if (expanded) return; // keep the band visible while expanded
         for (const entry of entries) {
           host.classList.toggle('is-active', entry.isIntersecting);
           if (entry.isIntersecting) {
@@ -486,6 +531,57 @@ const resolve = (u?: string) =>
       { rootMargin: '0px 0px -200px 0px' }
     );
     io.observe(host);
+
+    // --- Expand to a full-viewport, interactive map ---------------------------
+    const expandBtn = host.querySelector<HTMLButtonElement>('.storymap-expand');
+    const interactions = [
+      'dragPan', 'scrollZoom', 'boxZoom', 'dragRotate',
+      'keyboard', 'doubleClickZoom', 'touchZoomRotate', 'touchPitch',
+    ] as const;
+    function setInteractive(on: boolean) {
+      for (const name of interactions) {
+        const handler = (map as any)[name];
+        if (handler) on ? handler.enable() : handler.disable();
+      }
+    }
+
+    let nav: maplibregl.NavigationControl | null = null;
+    function setExpanded(next: boolean) {
+      if (next === expanded) return;
+      expanded = next;
+      host.classList.toggle('is-expanded', expanded);
+      document.body.style.overflow = expanded ? 'hidden' : '';
+      setInteractive(expanded);
+
+      if (expanded) {
+        nav = new maplibregl.NavigationControl({ showCompass: true, visualizePitch: true });
+        map.addControl(nav, 'top-left');
+      } else if (nav) {
+        map.removeControl(nav);
+        nav = null;
+      }
+
+      if (expandBtn) {
+        expandBtn.setAttribute('aria-pressed', String(expanded));
+        const label = expanded ? 'Close map' : 'Expand map';
+        expandBtn.setAttribute('aria-label', label);
+        expandBtn.setAttribute('title', label);
+      }
+
+      // Resize after the layout change; on collapse, resync camera to scroll.
+      requestAnimationFrame(() => {
+        map.resize();
+        if (!expanded) {
+          activeIndex = -1;
+          update();
+        }
+      });
+    }
+
+    expandBtn?.addEventListener('click', () => setExpanded(!expanded));
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && expanded) setExpanded(false);
+    });
   }
 
   document.querySelectorAll<HTMLElement>('.storymap').forEach(init);

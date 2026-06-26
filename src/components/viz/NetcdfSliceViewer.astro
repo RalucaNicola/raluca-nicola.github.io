@@ -1,0 +1,606 @@
+---
+// Reads a netCDF-4 (HDF5) file *in the browser* with jsfive and presents it as a
+// "matryoshka" of nested arrays. Two linked views share one selection state:
+//
+//   RIGHT — open-the-boxes explorer: pick a time, then a pressure level to reveal
+//           the lat/long slice as a Viridis heatmap; click a cell for one value.
+//   LEFT  — the same co2 variable written as nested arrays (array of arrays),
+//           truncated with ellipses, that expands along the selected path and
+//           shows the actual numbers where you've drilled in.
+//
+// Structure (dims, shapes, dtypes, coordinate values, data, global attributes) is
+// read live. Per-variable CF attributes are supplemented from the curated map
+// below: jsfive 0.4.0 can't decode the HDF5 "dense attribute storage" that
+// netCDF-4 uses for co2 (it carries 40+ GRIB/CF attributes). Values are verbatim.
+
+interface Props {
+  /** Path under /public (or absolute URL) to the .nc file. */
+  src?: string;
+}
+
+const { src = '/articles/multidimensional-data/data_allhours_plev.nc' } = Astro.props;
+
+const base = import.meta.env.BASE_URL;
+const dataUrl = src.startsWith('http') ? src : (base + src).replace(/\/+/g, '/');
+---
+
+<figure class="ncviz viz-wide" data-url={dataUrl}>
+  <div class="nc-status" role="status">
+    Reading <code>data_allhours_plev.nc</code> in your browser…
+  </div>
+
+  <div class="nc-app" hidden>
+    <nav class="nc-crumbs" aria-label="Selection path"></nav>
+
+    <div class="nc-grid">
+      <!-- LEFT: the file as nested arrays -->
+      <section class="nc-panel nc-left" aria-label="The file as nested arrays">
+        <h3>The file, as nested arrays</h3>
+        <div class="nc-header"></div>
+        <pre class="nc-nested" aria-live="polite"></pre>
+      </section>
+
+      <!-- RIGHT: open-the-boxes explorer -->
+      <section class="nc-panel nc-right" aria-label="Nested-box explorer">
+        <h3>Open the boxes</h3>
+        <div class="nc-matryoshka"></div>
+
+        <div class="nc-buffer">
+          <div class="nc-buffer-label">
+            Conceptually nested, but stored as one flat buffer of
+            <strong class="nc-total"></strong> numbers. Your selection lives here:
+          </div>
+          <div class="nc-buffer-bar">
+            <div class="nc-buffer-fill"></div>
+            <div class="nc-buffer-cell" hidden></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Full-width slice map, below the file info and the explorer -->
+    <section class="nc-panel nc-map" aria-label="Selected slice" hidden>
+      <h3 class="nc-map-title"></h3>
+      <div class="nc-map-body"></div>
+    </section>
+
+    <p class="nc-attribution"></p>
+  </div>
+
+  <noscript>This interactive reader requires JavaScript.</noscript>
+</figure>
+
+<!-- Global (namespaced under .ncviz) because the interactive markup — boxes,
+     buttons, the slice plot, colorbar and tooltip — is created at runtime via
+     innerHTML and would not match Astro's scoped (data-astro-cid) selectors. -->
+<style is:global>
+  .ncviz { margin: 2.5rem auto; font-size: 0.95rem; }
+  .ncviz .nc-status {
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 2rem;
+    text-align: center;
+    color: var(--text-muted);
+    background: var(--accent-soft);
+  }
+  .ncviz .nc-status code { font-size: 0.9em; }
+
+  /* Breadcrumb */
+  .ncviz .nc-crumbs {
+    font-family: ui-monospace, "Roboto Mono", monospace;
+    font-size: 0.85rem;
+    margin-bottom: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.15rem;
+  }
+  .ncviz .nc-crumbs button {
+    background: none;
+    border: none;
+    color: var(--accent);
+    cursor: pointer;
+    padding: 0.1rem 0.25rem;
+    border-radius: 3px;
+    font: inherit;
+  }
+  .ncviz .nc-crumbs button:hover { background: var(--accent-soft); }
+  .ncviz .nc-crumbs .nc-crumb-sep { color: var(--text-muted); }
+  .ncviz .nc-crumbs .nc-crumb-current { color: var(--text); padding: 0.1rem 0.25rem; }
+
+  .ncviz .nc-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+    gap: 1.25rem;
+    align-items: start;
+  }
+  .ncviz .nc-panel {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.1rem 1.2rem;
+  }
+  .ncviz .nc-panel h3 {
+    margin: 0 0 0.9rem;
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+
+  /* LEFT — file header + nested-array view */
+  .ncviz .nc-header {
+    font-family: ui-monospace, "Roboto Mono", monospace;
+    font-size: 0.76rem;
+    line-height: 1.6;
+    color: var(--text-muted);
+    border-bottom: 1px dashed var(--border);
+    padding-bottom: 0.8rem;
+    margin-bottom: 0.8rem;
+  }
+  .ncviz .nc-header .nc-h-var { color: var(--text); }
+  .ncviz .nc-header .nc-h-name { color: var(--accent); font-weight: 600; }
+
+  .ncviz .nc-nested {
+    font-family: ui-monospace, "Roboto Mono", monospace;
+    font-size: 0.8rem;
+    line-height: 1.7;
+    margin: 0;
+    white-space: pre;
+    overflow-x: auto;
+    color: var(--text);
+  }
+  .ncviz .nc-nested .nc-c { color: var(--text-muted); }        /* comments / ellipses */
+  .ncviz .nc-nested .nc-k { color: var(--accent); }            /* the active index */
+  .ncviz .nc-nested .nc-v { color: var(--text); }              /* values */
+  .ncviz .nc-nested .nc-hi { background: var(--accent-soft); border-radius: 2px; }
+
+  /* RIGHT — matryoshka */
+  .ncviz .nc-box {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.7rem 0.8rem 0.8rem;
+  }
+  .ncviz .nc-box + .nc-box { margin-top: 0.6rem; }
+  .ncviz .nc-box.nc-nest { margin-top: 0.75rem; background: var(--accent-soft); }
+  .ncviz .nc-box-title {
+    font-family: ui-monospace, "Roboto Mono", monospace;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+  }
+  .ncviz .nc-box-title b { color: var(--text); }
+
+  .ncviz .nc-boxrow { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+  .ncviz .nc-boxrow button {
+    font-family: ui-monospace, "Roboto Mono", monospace;
+    font-size: 0.82rem;
+    padding: 0.25rem 0.65rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg, #fff0);
+    color: var(--text);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+  }
+  .ncviz .nc-boxrow button:hover { border-color: var(--accent); }
+  .ncviz .nc-boxrow button.is-active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  /* slice / heatmap */
+  .ncviz .nc-plot-wrap { display: grid; grid-template-columns: auto 1fr auto; gap: 0.4rem; }
+  .ncviz .nc-lat-axis {
+    display: flex; flex-direction: column; justify-content: space-between;
+    font-size: 0.66rem; color: var(--text-muted);
+    font-variant-numeric: tabular-nums; text-align: right; padding: 0.1rem 0;
+  }
+  .ncviz .nc-plot { position: relative; line-height: 0; }
+  .ncviz .nc-canvas {
+    width: 100%; height: auto; display: block;
+    border: 1px solid var(--border); border-radius: 4px;
+    background: var(--accent-soft); cursor: crosshair;
+  }
+  .ncviz .nc-hover, .ncviz .nc-marker { position: absolute; pointer-events: none; z-index: 2; }
+  .ncviz .nc-hover {
+    background: rgba(0, 0, 0, 0.82); color: #fff;
+    font-size: 0.7rem; line-height: 1.4; padding: 0.3rem 0.45rem;
+    border-radius: 4px; white-space: nowrap;
+    transform: translate(-50%, calc(-100% - 10px));
+    font-family: ui-monospace, "Roboto Mono", monospace;
+  }
+  .ncviz .nc-marker {
+    width: 10px; height: 10px; border: 2px solid #fff;
+    border-radius: 50%; box-shadow: 0 0 0 1.5px #000;
+    transform: translate(-50%, -50%);
+  }
+  .ncviz .nc-colorbar { display: flex; gap: 0.3rem; }
+  .ncviz .nc-cbar-canvas { border: 1px solid var(--border); border-radius: 2px; height: 100%; width: 12px; }
+  .ncviz .nc-cbar-labels {
+    display: flex; flex-direction: column; justify-content: space-between;
+    font-size: 0.62rem; color: var(--text-muted); font-variant-numeric: tabular-nums;
+  }
+  .ncviz .nc-lon-axis {
+    display: flex; justify-content: space-between;
+    font-size: 0.66rem; color: var(--text-muted); font-variant-numeric: tabular-nums;
+    margin: 0.3rem calc(12px + 0.3rem + 5ch) 0 calc(2ch + 0.4rem);
+  }
+  .ncviz .nc-hint { font-size: 0.72rem; color: var(--text-muted); margin-top: 0.5rem; }
+
+  /* full-width slice map below the grid */
+  .ncviz .nc-map { margin-top: 1.25rem; }
+  .ncviz .nc-map .nc-map-title {
+    font-family: ui-monospace, "Roboto Mono", monospace;
+    text-transform: none; letter-spacing: 0; color: var(--text); font-weight: 400;
+  }
+  .ncviz .nc-map .nc-plot-wrap { max-width: 760px; margin: 0 auto; }
+  .ncviz .nc-map .nc-lon-axis { max-width: 760px; margin-left: auto; margin-right: auto;
+    padding: 0 calc(12px + 0.3rem + 5ch) 0 calc(2ch + 0.4rem); }
+
+  /* flat buffer */
+  .ncviz .nc-buffer { margin-top: 1.1rem; }
+  .ncviz .nc-buffer-label { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.4rem; }
+  .ncviz .nc-buffer-label strong { color: var(--text); }
+  .ncviz .nc-buffer-bar {
+    position: relative; height: 14px; border: 1px solid var(--border);
+    border-radius: 3px; overflow: hidden; background: var(--accent-soft);
+  }
+  .ncviz .nc-buffer-fill {
+    position: absolute; top: 0; bottom: 0;
+    background: var(--accent); opacity: 0.55; transition: left 0.2s, width 0.2s;
+  }
+  .ncviz .nc-buffer-cell { position: absolute; top: 0; bottom: 0; width: 2px; background: #000; }
+
+  .ncviz .nc-attribution { font-size: 0.78rem; color: var(--text-muted); margin-top: 1rem; }
+
+  @media (max-width: 760px) { .ncviz .nc-grid { grid-template-columns: 1fr; } }
+</style>
+
+<script>
+  import * as hdf5 from 'jsfive';
+  import { rgb, interpolateViridis } from 'd3';
+
+  const VAR_ATTRS: Record<string, Record<string, string>> = {
+    valid_time: { 'units': 'seconds since 1970-01-01', 'long_name': 'time' },
+    pressure_level: { 'units': 'hPa', 'long_name': 'pressure', 'positive': 'down' },
+    latitude: { 'units': 'degrees_north', 'standard_name': 'latitude' },
+    longitude: { 'units': 'degrees_east', 'standard_name': 'longitude' },
+    co2: {
+      'units': 'kg kg⁻¹',
+      'long_name': 'Carbon dioxide mass mixing ratio',
+      'standard_name': 'mass_fraction_of_carbon_dioxide_in_air',
+      '_FillValue': 'NaN',
+    },
+  };
+
+  const MMR_TO_PPM = (28.9647 / 44.0095) * 1e6; // mass mixing ratio -> ppm
+  const DTYPE_NAMES: Record<string, string> = { '<f4': 'float32', '<f8': 'float64', '<i8': 'int64', '<i4': 'int32' };
+  const dtypeName = (d: string) => DTYPE_NAMES[d] ?? d;
+  const fmtInt = (n: number) => n.toLocaleString('en-US');
+  const ppm = (mmr: number) => (Number.isNaN(mmr) ? 'NaN' : (mmr * MMR_TO_PPM).toFixed(1));
+
+  function init(root: HTMLElement) {
+    if (root.dataset.initialized) return;
+    root.dataset.initialized = '1';
+    const status = root.querySelector<HTMLElement>('.nc-status')!;
+    fetch(root.dataset.url!)
+      .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.arrayBuffer(); })
+      .then((ab) => build(root, ab))
+      .catch((err) => { status.textContent = `Could not read the file: ${err.message}`; });
+  }
+
+  function build(root: HTMLElement, ab: ArrayBuffer) {
+    const f = new hdf5.File(ab, 'data_allhours_plev.nc');
+    const co2 = f.get('co2') as any;
+
+    // jsfive returns plain Arrays; coerce co2 to a typed array for fast slicing.
+    const raw = co2.value as ArrayLike<number>;
+    const data = raw instanceof Float32Array ? raw : Float32Array.from(raw);
+    const lat = Array.from((f.get('latitude') as any).value as ArrayLike<number>, Number);
+    const lon = Array.from((f.get('longitude') as any).value as ArrayLike<number>, Number);
+    const levels = Array.from((f.get('pressure_level') as any).value as ArrayLike<number>, Number);
+    const years = Array.from((f.get('valid_time') as any).value as ArrayLike<number>,
+      (s) => new Date(Number(s) * 1000).getUTCFullYear());
+
+    const [nT, nLev, nLat, nLon] = co2.shape as number[];
+    const sliceLen = nLat * nLon;
+    const total = data.length;
+
+    // ---- selection state ----
+    let ti: number | null = null;
+    let li: number | null = null;
+    let cell: { x: number; y: number } | null = null;
+    let slice: Float32Array | null = null;
+    let smin = 0, smax = 1, offset = 0;
+
+    // ---- static bits ----
+    renderHeader(root, f, { nT, nLev, nLat, nLon });
+    (root.querySelector('.nc-total') as HTMLElement).textContent = fmtInt(total);
+    (root.querySelector('.nc-attribution') as HTMLElement).innerHTML =
+      `Dataset: CO₂ mass mixing ratio, ${f.attrs.institution ?? 'ECMWF'}. ` +
+      `Years ${years.join(', ')}; levels ${levels.join(', ')} hPa. ` +
+      `Read client-side from a 3.1 MB netCDF-4 file with jsfive. Values shown in ppm.`;
+
+    // ---- build matryoshka (DOM once; toggle visibility on selection) ----
+    const mat = root.querySelector<HTMLElement>('.nc-matryoshka')!;
+
+    const timeBox = boxEl(`<span class="nc-box-title"><b>co2</b> — pick a <b>time</b> (valid_time: ${nT})</span>`);
+    const timeRow = rowEl(years.map((y) => String(y)), (i) => selectTime(i));
+    timeBox.appendChild(timeRow);
+
+    const levelBox = boxEl('', true);
+    const levelTitle = levelBox.querySelector('.nc-box-title') as HTMLElement;
+    const levelRow = rowEl(levels.map((p) => `${p} hPa`), (i) => selectLevel(i));
+    levelBox.appendChild(levelRow);
+    levelBox.hidden = true;
+
+    timeBox.appendChild(levelBox);
+    mat.appendChild(timeBox);
+
+    // The slice map lives in its own full-width section below the grid.
+    const mapSec = root.querySelector<HTMLElement>('.nc-map')!;
+    const sliceTitle = mapSec.querySelector<HTMLElement>('.nc-map-title')!;
+    mapSec.querySelector<HTMLElement>('.nc-map-body')!.innerHTML = `
+      <div class="nc-plot-wrap">
+        <div class="nc-lat-axis"></div>
+        <div class="nc-plot">
+          <canvas class="nc-canvas" width="${nLon}" height="${nLat}"></canvas>
+          <div class="nc-hover" hidden></div>
+          <div class="nc-marker" hidden></div>
+        </div>
+        <div class="nc-colorbar">
+          <canvas class="nc-cbar-canvas" width="12" height="200"></canvas>
+          <div class="nc-cbar-labels"><span class="nc-cmax"></span><span class="nc-cmin"></span></div>
+        </div>
+      </div>
+      <div class="nc-lon-axis"></div>
+      <div class="nc-hint">Hover to read a cell; click to lock one value.</div>`;
+
+    const canvas = mapSec.querySelector<HTMLCanvasElement>('.nc-canvas')!;
+    const ctx = canvas.getContext('2d')!;
+    paintColorbar(mapSec.querySelector<HTMLCanvasElement>('.nc-cbar-canvas')!);
+    buildAxis(mapSec.querySelector('.nc-lat-axis')!, lat);
+    buildAxis(mapSec.querySelector('.nc-lon-axis')!, lon);
+    const hover = mapSec.querySelector<HTMLElement>('.nc-hover')!;
+    const marker = mapSec.querySelector<HTMLElement>('.nc-marker')!;
+
+    canvas.addEventListener('mousemove', (e) => {
+      if (!slice) return;
+      const { x, y } = pickCell(canvas, e, nLon, nLat);
+      const v = slice[y * nLon + x];
+      hover.hidden = false;
+      hover.style.left = `${((x + 0.5) / nLon) * 100}%`;
+      hover.style.top = `${(y / nLat) * 100}%`;
+      hover.innerHTML = `lat ${lat[y].toFixed(2)}°, lon ${lon[x].toFixed(2)}°<br>${ppm(v)} ppm`;
+    });
+    canvas.addEventListener('mouseleave', () => { hover.hidden = true; });
+    canvas.addEventListener('click', (e) => { cell = pickCell(canvas, e, nLon, nLat); render(); });
+
+    // ---- selection handlers ----
+    function selectTime(i: number) { ti = i; li = null; cell = null; render(); }
+    function selectLevel(i: number) { li = i; cell = null; render(); }
+
+    function render() {
+      // active states
+      setActive(timeRow, ti);
+      setActive(levelRow, li);
+
+      levelBox.hidden = ti === null;
+      if (ti !== null) levelTitle.innerHTML = `<b>co2[${years[ti]}]</b> — pick a <b>pressure level</b> (${nLev})`;
+
+      mapSec.hidden = li === null;
+      if (ti !== null && li !== null) {
+        offset = ((ti * nLev + li) * nLat) * nLon;
+        slice = data.subarray(offset, offset + sliceLen);
+        smin = Infinity; smax = -Infinity;
+        for (let k = 0; k < slice.length; k++) {
+          const v = slice[k];
+          if (Number.isNaN(v)) continue;
+          if (v < smin) smin = v; if (v > smax) smax = v;
+        }
+        sliceTitle.innerHTML =
+          `<b>co2[${years[ti]}][${levels[li]} hPa]</b> — latitude × longitude (${nLat} × ${nLon})`;
+        paintSlice(ctx, slice, nLon, nLat, smin, smax);
+        (root.querySelector('.nc-cmax') as HTMLElement).textContent = ppm(smax);
+        (root.querySelector('.nc-cmin') as HTMLElement).textContent = ppm(smin);
+
+        if (cell) {
+          marker.hidden = false;
+          marker.style.left = `${((cell.x + 0.5) / nLon) * 100}%`;
+          marker.style.top = `${((cell.y + 0.5) / nLat) * 100}%`;
+        } else {
+          marker.hidden = true;
+        }
+      } else {
+        slice = null;
+      }
+
+      renderCrumbs(root, { ti, li, cell }, { years, levels, lat, lon },
+        { onRoot: () => { ti = null; li = null; cell = null; render(); },
+          onTime: () => { li = null; cell = null; render(); },
+          onLevel: () => { cell = null; render(); } });
+      renderNested(root, { ti, li, cell }, { years, levels, lat, lon, slice, nLev, nLat, nLon });
+      renderBuffer(root, { ti, li, cell }, { nLev, nLat, nLon, total });
+    }
+
+    render();
+    status.hide(root);
+  }
+
+  // ---------- rendering helpers ----------
+  function boxEl(titleHtml: string, nested = false) {
+    const d = document.createElement('div');
+    d.className = nested ? 'nc-box nc-nest' : 'nc-box';
+    d.innerHTML = `<div class="nc-box-title">${titleHtml}</div>`;
+    return d;
+  }
+  function rowEl(labels: string[], onClick: (i: number) => void) {
+    const row = document.createElement('div');
+    row.className = 'nc-boxrow';
+    labels.forEach((label, i) => {
+      const b = document.createElement('button');
+      b.textContent = label; b.dataset.i = String(i);
+      b.addEventListener('click', () => onClick(i));
+      row.appendChild(b);
+    });
+    return row;
+  }
+  function setActive(row: Element, active: number | null) {
+    row.querySelectorAll<HTMLElement>('button').forEach((b) =>
+      b.classList.toggle('is-active', active !== null && Number(b.dataset.i) === active));
+  }
+  function pickCell(canvas: HTMLCanvasElement, e: MouseEvent, nLon: number, nLat: number) {
+    const r = canvas.getBoundingClientRect();
+    return {
+      x: Math.min(nLon - 1, Math.max(0, Math.floor(((e.clientX - r.left) / r.width) * nLon))),
+      y: Math.min(nLat - 1, Math.max(0, Math.floor(((e.clientY - r.top) / r.height) * nLat))),
+    };
+  }
+  function paintSlice(ctx: CanvasRenderingContext2D, slice: Float32Array, nLon: number, nLat: number, min: number, max: number) {
+    const img = ctx.createImageData(nLon, nLat);
+    const span = max - min || 1;
+    for (let k = 0; k < slice.length; k++) {
+      const v = slice[k], o = k * 4;
+      if (Number.isNaN(v)) { img.data[o + 3] = 0; continue; }
+      const c = rgb(interpolateViridis((v - min) / span));
+      img.data[o] = c.r; img.data[o + 1] = c.g; img.data[o + 2] = c.b; img.data[o + 3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+  function paintColorbar(cbar: HTMLCanvasElement) {
+    const c = cbar.getContext('2d')!, h = cbar.height;
+    for (let y = 0; y < h; y++) { c.fillStyle = rgb(interpolateViridis(1 - y / (h - 1))).formatRgb(); c.fillRect(0, y, cbar.width, 1); }
+  }
+  function buildAxis(ax: Element, coords: number[]) {
+    ax.innerHTML = [0, 0.25, 0.5, 0.75, 1]
+      .map((t) => `<span>${coords[Math.round(t * (coords.length - 1))].toFixed(0)}°</span>`).join('');
+  }
+
+  function renderHeader(root: HTMLElement, f: any, shape: { nT: number; nLev: number; nLat: number; nLon: number }) {
+    const order = ['valid_time', 'pressure_level', 'latitude', 'longitude', 'co2'];
+    const vars = order.map((name) => {
+      const v = f.get(name); const a = VAR_ATTRS[name] ?? {};
+      const u = a.units ? ` <span class="nc-c">// ${a.units}</span>` : '';
+      return `<span class="nc-h-name">${name}</span> <span class="nc-h-var">${dtypeName(v.dtype)} (${v.shape.join(', ')})</span>${u}`;
+    }).join('<br>');
+    (root.querySelector('.nc-header') as HTMLElement).innerHTML =
+      `<span class="nc-c">dimensions:</span> valid_time=${shape.nT}, pressure_level=${shape.nLev}, latitude=${shape.nLat}, longitude=${shape.nLon}` +
+      `<br><br><span class="nc-c">variables:</span><br>${vars}` +
+      `<br><br><span class="nc-c">Conventions:</span> ${f.attrs.Conventions ?? '—'}`;
+  }
+
+  type Sel = { ti: number | null; li: number | null; cell: { x: number; y: number } | null };
+
+  function renderCrumbs(root: HTMLElement, sel: Sel,
+    d: { years: number[]; levels: number[]; lat: number[]; lon: number[] },
+    h: { onRoot: () => void; onTime: () => void; onLevel: () => void }) {
+    const nav = root.querySelector<HTMLElement>('.nc-crumbs')!;
+    nav.innerHTML = '';
+    const sep = () => { const s = document.createElement('span'); s.className = 'nc-crumb-sep'; s.textContent = ' ▸ '; nav.appendChild(s); };
+    const crumb = (text: string, onClick?: () => void) => {
+      if (onClick) { const b = document.createElement('button'); b.textContent = text; b.addEventListener('click', onClick); nav.appendChild(b); }
+      else { const s = document.createElement('span'); s.className = 'nc-crumb-current'; s.textContent = text; nav.appendChild(s); }
+    };
+    crumb('co2', sel.ti !== null ? h.onRoot : undefined);
+    if (sel.ti !== null) { sep(); crumb(String(d.years[sel.ti]), sel.li !== null ? h.onTime : undefined); }
+    if (sel.li !== null) { sep(); crumb(`${d.levels[sel.li]} hPa`, sel.cell ? h.onLevel : undefined); }
+    if (sel.cell) { sep(); crumb(`${d.lat[sel.cell.y].toFixed(2)}°, ${d.lon[sel.cell.x].toFixed(2)}°`); }
+  }
+
+  // The co2 variable written as nested arrays, expanded along the selected path.
+  function renderNested(root: HTMLElement, sel: Sel,
+    d: { years: number[]; levels: number[]; lat: number[]; lon: number[]; slice: Float32Array | null; nLev: number; nLat: number; nLon: number }) {
+    const el = root.querySelector<HTMLElement>('.nc-nested')!;
+    const C = (s: string) => `<span class="nc-c">${s}</span>`;
+    const K = (s: string) => `<span class="nc-k">${s}</span>`;
+    let out = '';
+
+    if (sel.ti === null) {
+      out =
+        `co2 = [ ${C('// valid_time: ' + d.years.length)}\n` +
+        d.years.map((y) => `  [${y}] ${C('… ' + d.nLev + '×' + d.nLat + '×' + d.nLon + ' values')}`).join('\n') +
+        `\n]`;
+    } else if (sel.li === null) {
+      out =
+        `co2 = [ ${C('// pick a level inside [' + d.years[sel.ti] + ']')}\n` +
+        d.years.map((y, i) =>
+          i === sel.ti
+            ? `  ${K('[' + y + ']')} = [ ${C('// pressure_level: ' + d.nLev)}\n` +
+              d.levels.map((p) => `      [${p} hPa] ${C('… ' + d.nLat + '×' + d.nLon + ' values')}`).join('\n') +
+              `\n  ]`
+            : `  [${y}] ${C('…')}`).join('\n') +
+        `\n]`;
+    } else {
+      // slice level: truncated grid of actual values
+      const grid = d.slice ? gridPreview(d.slice, d.nLat, d.nLon, d.lat, sel.cell) : '';
+      out =
+        `co2${K('[' + d.years[sel.ti] + ']')}${K('[' + d.levels[sel.li] + ' hPa]')} = [ ` +
+        C('// latitude × longitude: ' + d.nLat + ' × ' + d.nLon) + `\n${grid}\n]`;
+      if (sel.cell) {
+        const v = d.slice![sel.cell.y * d.nLon + sel.cell.x];
+        out += `\n\n` +
+          `co2[${d.years[sel.ti]}][${d.levels[sel.li]} hPa]` +
+          K(`[${d.lat[sel.cell.y].toFixed(2)}°]`) + K(`[${d.lon[sel.cell.x].toFixed(2)}°]`) +
+          ` = ${Number.isNaN(v) ? 'NaN' : `<span class="nc-v">${ppm(v)} ppm</span>`}`;
+      }
+    }
+    el.innerHTML = out;
+  }
+
+  function gridPreview(slice: Float32Array, nLat: number, nLon: number, lat: number[], cell: Sel['cell']) {
+    const rows = [0, 1, 2, nLat - 1];
+    const cols = [0, 1, 2, nLon - 1];
+    const lines = rows.map((y, ri) => {
+      const cellsTxt = cols.map((x, ci) => {
+        const raw = slice[y * nLon + x];
+        const val = Number.isNaN(raw) ? 'NaN' : ppm(raw);
+        const hot = cell && cell.y === y && cell.x === x;
+        const txt = ci === 3 ? `…, ${val}` : `${val},`;
+        return hot ? `<span class="nc-hi">${txt}</span>` : txt;
+      }).join(' ');
+      const sep = ri === 3 ? `  <span class="nc-c">⋮ (${nLat - 4} more rows)</span>\n` : '';
+      return `${sep}  [ ${cellsTxt} ]  <span class="nc-c">// lat ${lat[y].toFixed(2)}°</span>`;
+    });
+    return lines.join('\n');
+  }
+
+  // Highlight the contiguous span the current selection occupies: a year is a
+  // quarter of the buffer, a year+level is one slice, and a cell is a single tick.
+  function renderBuffer(root: HTMLElement, sel: Sel,
+    b: { nLev: number; nLat: number; nLon: number; total: number }) {
+    const fill = root.querySelector<HTMLElement>('.nc-buffer-fill')!;
+    const cellBar = root.querySelector<HTMLElement>('.nc-buffer-cell')!;
+
+    if (sel.ti === null) {
+      fill.style.left = '0%'; fill.style.width = '100%'; cellBar.hidden = true; return;
+    }
+
+    const sliceLen = b.nLat * b.nLon;
+    const yearLen = b.nLev * sliceLen;
+    let start: number, len: number;
+    if (sel.li === null) {
+      start = sel.ti * yearLen; len = yearLen;            // one year's block
+    } else {
+      start = (sel.ti * b.nLev + sel.li) * sliceLen; len = sliceLen; // one slice
+    }
+    fill.style.left = `${(start / b.total) * 100}%`;
+    fill.style.width = `${(len / b.total) * 100}%`;
+
+    if (sel.li !== null && sel.cell) {
+      cellBar.hidden = false;
+      cellBar.style.left = `${((start + sel.cell.y * b.nLon + sel.cell.x) / b.total) * 100}%`;
+    } else { cellBar.hidden = true; }
+  }
+
+  // small helper so build() reads cleanly
+  const status = {
+    hide(root: HTMLElement) {
+      root.querySelector<HTMLElement>('.nc-status')!.hidden = true;
+      root.querySelector<HTMLElement>('.nc-app')!.hidden = false;
+    },
+  };
+
+  document.querySelectorAll<HTMLElement>('.ncviz').forEach(init);
+</script>

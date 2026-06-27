@@ -42,6 +42,9 @@
   .hint { font-size:12px; color:var(--muted); margin-top:10px; }
   .placeholder { color:var(--muted); font-style:italic; }
   .pill { display:inline-block; background:#f0f0f0; border-radius:10px; padding:1px 8px; font-size:11px; color:#444; }
+  #search { width:100%; padding:7px 10px; font-size:13px; border:1px solid var(--border); border-radius:6px; background:#fff; color:var(--ink); }
+  #search:focus { outline:none; border-color:#999; }
+  .node.match circle { stroke:#d6261f; stroke-width:2.5px; }
 </style>
 </head>
 <body>
@@ -50,6 +53,8 @@
   <aside>
     <h1>HSLU MSc Applied Information &amp; Data Science</h1>
     <p class="sub">Module dependency graph · 2026 curriculum</p>
+
+    <input id="search" type="search" placeholder="Search module names…" autocomplete="off" />
 
     <h2>Recommended semester</h2>
     <div id="legend-sem"></div>
@@ -324,9 +329,30 @@ function highlight(d) {
   });
 }
 function clearHighlight() {
+  if (searchQuery) { applySearch(); return; }   // keep search results visible after hover
   node.classed('dim', false);
   link.classed('dim', false);
 }
+
+// ---------------------------------------------------------------------------
+// Search (module names only) — highlights matches the same way hover does
+// ---------------------------------------------------------------------------
+const searchInput = document.getElementById('search');
+let searchQuery = '';
+
+function matchesSearch(d) {
+  return !!searchQuery && d.name.toLowerCase().includes(searchQuery);
+}
+function applySearch() {
+  node.classed('match', d => matchesSearch(d));
+  if (!searchQuery) { node.classed('dim', false); link.classed('dim', false); return; }
+  node.classed('dim', d => !matchesSearch(d));
+  link.classed('dim', l => !(matchesSearch(l.source) && matchesSearch(l.target)));
+}
+searchInput.addEventListener('input', () => {
+  searchQuery = searchInput.value.trim().toLowerCase();
+  applySearch();
+});
 
 // ---------------------------------------------------------------------------
 // Detail panel

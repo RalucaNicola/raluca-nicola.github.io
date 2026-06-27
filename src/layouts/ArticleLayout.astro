@@ -8,14 +8,15 @@ interface Props {
   date: Date;
   cover?: string;
   coverAlt?: string;
-  section: Section;
+  /** Optional: standalone articles (not in the work/hobbies collections) omit this. */
+  section?: Section;
   tags?: string[];
 }
 
 const { title, description, date, cover, coverAlt, section, tags = [] } = Astro.props;
 const dateLabel = date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 const base = import.meta.env.BASE_URL;
-const indexHref = sectionHref(section);
+const indexHref = section ? sectionHref(section) : undefined;
 const coverSrc = cover
   ? (cover.startsWith('http') ? cover : (base + cover).replace(/\/+/g, '/'))
   : undefined;
@@ -32,8 +33,12 @@ const coverSrc = cover
   <article>
     <header class="article-header reading">
       <p class="kicker">
-        <a href={indexHref}>{sectionLabel(section)}</a>
-        <span aria-hidden="true">·</span>
+        {section && (
+          <>
+            <a href={indexHref}>{sectionLabel(section)}</a>
+            <span aria-hidden="true">·</span>
+          </>
+        )}
         <time datetime={date.toISOString()}>{dateLabel}</time>
       </p>
       <h1>{title}</h1>

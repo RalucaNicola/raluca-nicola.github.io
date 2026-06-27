@@ -1,0 +1,346 @@
+---
+// Force-directed dependency graph of the HSLU MSc Applied Information & Data
+// Science modules. Data is fetched from /public at runtime; rendering is a
+// client island built on the bundled d3.
+interface Props {
+  /** Height of the graph card in px. */
+  height?: number;
+}
+
+const { height = 640 } = Astro.props;
+const base = import.meta.env.BASE_URL;
+const dataUrl = (base + '/articles/hslu-modules/hslu-modules.csv').replace(/\/+/g, '/');
+---
+
+<figure class="viz-wide module-graph">
+  <div class="mg-card" data-data-url={dataUrl} style={`height: ${height}px`}>
+    <div class="mg-graph" data-mg-graph></div>
+    <aside class="mg-aside">
+      <h2>Recommended semester</h2>
+      <div data-mg-legend-sem></div>
+      <div class="mg-legend-row" style="margin-top:8px">
+        <span class="mg-swatch" style="background:#cfcfcf;position:relative">
+          <span class="mg-required-mark"></span>
+        </span>
+        <span>Required module (red centre)</span>
+      </div>
+
+      <h2>Prerequisite type</h2>
+      <div class="mg-legend-row"><span class="mg-edgekey"></span><span>All required (AND)</span></div>
+      <div class="mg-legend-row"><span class="mg-edgekey dashed"></span><span>Alternative (OR)</span></div>
+
+      <h2>Details</h2>
+      <div data-mg-detail><p class="mg-placeholder">Hover or click a module to see its details.</p></div>
+      <p class="mg-hint">Drag nodes to rearrange · scroll to zoom · drag background to pan · node size ∝ ECTS · arrows point from a prerequisite to the module that needs it.</p>
+    </aside>
+  </div>
+  <noscript><p>This visualization requires JavaScript.</p></noscript>
+</figure>
+
+<style>
+  .module-graph { margin: 2rem 0; }
+  .mg-card {
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    overflow: hidden;
+  }
+  .mg-graph { flex: 1; position: relative; min-width: 0; }
+  .mg-graph :global(svg) { width: 100%; height: 100%; display: block; cursor: grab; }
+  .mg-graph :global(svg:active) { cursor: grabbing; }
+
+  .mg-aside {
+    width: 320px;
+    flex: none;
+    border-left: 1px solid var(--border);
+    padding: 18px 18px 28px;
+    overflow-y: auto;
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+  .mg-aside h2 {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    margin: 18px 0 8px;
+  }
+  .mg-aside h2:first-child { margin-top: 0; }
+
+  .mg-legend-row { display: flex; align-items: center; gap: 9px; font-size: 13px; margin: 5px 0; }
+  .mg-swatch { width: 14px; height: 14px; border-radius: 50%; flex: none; border: 1px solid rgba(0, 0, 0, 0.15); }
+  .mg-required-mark {
+    position: absolute; top: 50%; left: 50%;
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #d6261f; transform: translate(-50%, -50%);
+  }
+  .mg-edgekey { width: 34px; height: 0; flex: none; border-top: 2px solid #9aa0a6; }
+  .mg-edgekey.dashed { border-top: 2px dashed #9aa0a6; }
+
+  .mg-hint { font-size: 12px; color: var(--text-muted); margin-top: 10px; }
+
+  /* d3-created DOM — must be styled globally since Astro scoping
+     only tags elements present at build time. */
+  .module-graph :global(.node circle) { stroke: var(--surface); stroke-width: 1.5px; cursor: pointer; }
+  .module-graph :global(.node-label) { font-size: 9px; fill: var(--text); pointer-events: none; }
+  .module-graph :global(.node.dim circle),
+  .module-graph :global(.link.dim) { opacity: 0.12; }
+  .module-graph :global(.node.dim text) { opacity: 0.12; }
+  .module-graph :global(.link) { stroke: #9aa0a6; stroke-width: 1.4px; }
+  .module-graph :global(.link.or) { stroke-dasharray: 5 4; }
+
+  .module-graph :global(.mg-detail-body) { font-size: 13px; line-height: 1.5; }
+  .module-graph :global(.mg-detail-body .code) { font-weight: 600; }
+  .module-graph :global(.mg-detail-body .meta) { color: var(--text-muted); font-size: 12px; margin: 2px 0 10px; }
+  .module-graph :global(.mg-detail-body .field-label) {
+    font-weight: 600; font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.04em; color: var(--text-muted); margin-top: 12px;
+  }
+  .module-graph :global(.mg-detail-body p) { margin: 3px 0; }
+  .module-graph :global(.mg-placeholder) { color: var(--text-muted); font-style: italic; }
+  .module-graph :global(.mg-pill) {
+    display: inline-block; background: var(--accent-soft); color: var(--accent);
+    border-radius: 10px; padding: 1px 8px; font-size: 11px;
+  }
+
+  @media (max-width: 720px) {
+    .mg-card { flex-direction: column; height: auto !important; }
+    .mg-graph { height: 60vh; }
+    .mg-aside { width: 100%; border-left: none; border-top: 1px solid var(--border); }
+  }
+</style>
+
+<script>
+  import * as d3 from 'd3';
+
+  function initModuleGraph(card: HTMLElement) {
+    const dataUrl = card.dataset.dataUrl!;
+    d3.csv(dataUrl).then((rows) => render(card, rows as any[]));
+  }
+
+  function render(card: HTMLElement, rows: any[]) {
+    const byId = new Map(rows.map((r) => [r.module_number, r]));
+
+    const nodes = rows.map((r) => ({
+      id: r.module_number,
+      short: r.module_number.replace('W.MSCIDS_', ''),
+      name: r.module_name,
+      ects: r.ects,
+      ectsNum: parseInt(r.ects, 10) || 3,
+      semester: r.recommended_semester,
+      type: r.type,
+      section: r.section,
+      objectives: r.learning_objectives,
+      content: r.learning_content_structure,
+      reqRaw: r.entry_requirements,
+    }));
+
+    const links: any[] = [];
+    rows.forEach((r) => {
+      const req = (r.entry_requirements || '').trim();
+      if (!req) return;
+      const isOr = req.includes('|');
+      req.split(/[;|]/).map((s: string) => s.trim()).filter(Boolean).forEach((p: string) => {
+        if (byId.has(p)) links.push({ source: p, target: r.module_number, type: isOr ? 'or' : 'and' });
+      });
+    });
+
+    const semDomain = ['1', '2', '3', '4', 'open'];
+    const semLabels: Record<string, string> = {
+      '1': 'Semester 1', '2': 'Semester 2', '3': 'Semester 3', '4': 'Semester 4', open: 'Open / flexible',
+    };
+    const semColor = d3.scaleOrdinal<string, string>()
+      .domain(semDomain)
+      .range(['#60a110', '#edbb18', '#f7870f', '#d156b4', '#b0b0b0']);
+
+    const radius = d3.scaleSqrt().domain([3, 21]).range([10, 35]);
+
+    // Semester legend
+    const legSem = d3.select(card.querySelector('[data-mg-legend-sem]') as HTMLElement);
+    semDomain.forEach((s) => {
+      const row = legSem.append('div').attr('class', 'mg-legend-row');
+      row.append('span').attr('class', 'mg-swatch').style('background', semColor(s));
+      row.append('span').text(semLabels[s]);
+    });
+
+    const container = card.querySelector('[data-mg-graph]') as HTMLElement;
+    let width = container.clientWidth, height = container.clientHeight;
+
+    const svg = d3.select(container).append('svg');
+    const root = svg.append('g');
+
+    const defs = svg.append('defs');
+    ['and', 'or'].forEach((t) => {
+      defs.append('marker')
+        .attr('id', `mg-arrow-${t}`)
+        .attr('viewBox', '0 -5 10 10')
+        .attr('refX', 10).attr('refY', 0)
+        .attr('markerUnits', 'userSpaceOnUse')
+        .attr('markerWidth', 11).attr('markerHeight', 11)
+        .attr('orient', 'auto')
+        .append('path')
+        .attr('d', 'M0,-5L10,0L0,5')
+        .attr('fill', '#9aa0a6');
+    });
+
+    svg.call(
+      d3.zoom<SVGSVGElement, unknown>()
+        .scaleExtent([0.2, 4])
+        .on('zoom', (e) => root.attr('transform', e.transform)) as any
+    );
+
+    const link = root.append('g')
+      .selectAll('line')
+      .data(links)
+      .join('line')
+      .attr('class', (d) => 'link ' + d.type)
+      .attr('marker-end', (d) => `url(#mg-arrow-${d.type})`);
+
+    const node = root.append('g')
+      .selectAll('g')
+      .data(nodes)
+      .join('g')
+      .attr('class', 'node')
+      .call(
+        d3.drag<SVGGElement, any>()
+          .on('start', dragstart)
+          .on('drag', dragged)
+          .on('end', dragend) as any
+      );
+
+    node.append('circle')
+      .attr('r', (d) => radius(d.ectsNum))
+      .attr('fill', (d) => semColor(d.semester));
+
+    node.filter((d) => d.type === 'Required')
+      .append('circle')
+      .attr('class', 'required-dot')
+      .attr('r', (d) => Math.max(2.5, radius(d.ectsNum) * 0.4))
+      .attr('fill', '#d6261f')
+      .attr('stroke', 'none')
+      .attr('pointer-events', 'none');
+
+    function labelLines(name: string) {
+      const max = 20;
+      const words = name.split(/\s+/).filter(Boolean);
+      const lines: string[] = [];
+      let cur = '', idx = 0;
+      while (idx < words.length && lines.length < 2) {
+        let w = words[idx];
+        if (w.length > max) w = w.slice(0, max);
+        const candidate = cur ? cur + ' ' + w : w;
+        if (candidate.length <= max) { cur = candidate; idx++; }
+        else { lines.push(cur); cur = ''; }
+      }
+      if (cur && lines.length < 2) lines.push(cur);
+      if (idx < words.length && lines.length === 2) {
+        let last = lines[1];
+        if (last.length + 1 > max) last = last.slice(0, max - 1);
+        lines[1] = last.trimEnd() + '…';
+      }
+      return lines;
+    }
+
+    node.append('text')
+      .attr('class', 'node-label')
+      .attr('text-anchor', 'middle')
+      .each(function (d) {
+        const t = d3.select(this);
+        labelLines(d.name).forEach((line, i) => {
+          t.append('tspan')
+            .attr('x', 0)
+            .attr('dy', i === 0 ? radius(d.ectsNum) + 9 : 10)
+            .text(line);
+        });
+      });
+
+    node.on('mouseover', (_e, d) => { showDetail(d); highlight(d); })
+        .on('mouseout', () => clearHighlight())
+        .on('click', (e, d) => { showDetail(d); e.stopPropagation(); });
+    svg.on('click', () => clearHighlight());
+
+    const sim = d3.forceSimulation(nodes as any)
+      .force('link', d3.forceLink(links).id((d: any) => d.id).distance(95).strength(0.4))
+      .force('charge', d3.forceManyBody().strength(-340))
+      .force('collide', d3.forceCollide().radius((d: any) => radius(d.ectsNum) + 14))
+      .force('center', d3.forceCenter(width / 2, height / 2))
+      .force('x', d3.forceX(width / 2).strength(0.04))
+      .force('y', d3.forceY(height / 2).strength(0.04))
+      .on('tick', ticked);
+
+    function ticked() {
+      link.each(function (d: any) {
+        const dx = d.target.x - d.source.x, dy = d.target.y - d.source.y;
+        const dist = Math.hypot(dx, dy) || 1;
+        const ux = dx / dist, uy = dy / dist;
+        const sr = radius(d.source.ectsNum);
+        const tr = radius(d.target.ectsNum) + 4;
+        d3.select(this)
+          .attr('x1', d.source.x + ux * sr).attr('y1', d.source.y + uy * sr)
+          .attr('x2', d.target.x - ux * tr).attr('y2', d.target.y - uy * tr);
+      });
+      node.attr('transform', (d: any) => `translate(${d.x},${d.y})`);
+    }
+
+    const neighbours = new Map(nodes.map((n) => [n.id, new Set([n.id])]));
+    links.forEach((l) => {
+      const s = typeof l.source === 'object' ? l.source.id : l.source;
+      const t = typeof l.target === 'object' ? l.target.id : l.target;
+      neighbours.get(s)!.add(t);
+      neighbours.get(t)!.add(s);
+    });
+
+    function highlight(d: any) {
+      const keep = neighbours.get(d.id)!;
+      node.classed('dim', (n: any) => !keep.has(n.id));
+      link.classed('dim', (l: any) => !(l.source.id === d.id || l.target.id === d.id));
+    }
+    function clearHighlight() {
+      node.classed('dim', false);
+      link.classed('dim', false);
+    }
+
+    const detail = card.querySelector('[data-mg-detail]') as HTMLElement;
+    detail.classList.add('mg-detail-body');
+
+    function reqText(d: any) {
+      const req = (d.reqRaw || '').trim();
+      if (!req) return 'None';
+      const isOr = req.includes('|');
+      const parts = req.split(/[;|]/).map((s: string) => s.trim()).filter(Boolean)
+        .map((p: string) => (byId.get(p) ? byId.get(p).module_name : p) + ' (' + p.replace('W.MSCIDS_', '') + ')');
+      return parts.join(isOr ? '  — OR — ' : '  +  ');
+    }
+    function showDetail(d: any) {
+      d3.select(detail).html(`
+        <p><span class="code">${d.name}</span></p>
+        <p class="meta">${d.short} · ${d.ects} ECTS · <span class="mg-pill">${d.type}</span><br>${d.section} · ${semLabels[d.semester]}</p>
+        <p class="field-label">Prerequisites</p>
+        <p>${reqText(d)}</p>
+        <p class="field-label">Learning objectives</p>
+        <p>${d.objectives || '—'}</p>
+        <p class="field-label">Content &amp; structure</p>
+        <p>${d.content || '—'}</p>
+      `);
+    }
+
+    function dragstart(e: any, d: any) { if (!e.active) sim.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; }
+    function dragged(e: any, d: any) { d.fx = e.x; d.fy = e.y; }
+    function dragend(e: any, d: any) { if (!e.active) sim.alphaTarget(0); d.fx = null; d.fy = null; }
+
+    let t: number | undefined;
+    window.addEventListener('resize', () => {
+      clearTimeout(t);
+      t = window.setTimeout(() => {
+        width = container.clientWidth; height = container.clientHeight;
+        sim.force('center', d3.forceCenter(width / 2, height / 2));
+        sim.force('x', d3.forceX(width / 2).strength(0.04));
+        sim.force('y', d3.forceY(height / 2).strength(0.04));
+        sim.alpha(0.3).restart();
+      }, 150);
+    });
+  }
+
+  document.querySelectorAll<HTMLElement>('.module-graph .mg-card').forEach(initModuleGraph);
+</script>

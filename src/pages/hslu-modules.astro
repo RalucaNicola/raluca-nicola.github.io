@@ -1,0 +1,30 @@
+---
+import ArticleLayout from '~/layouts/ArticleLayout.astro';
+import ModuleGraph from '~/components/viz/ModuleGraph.astro';
+
+// Standalone article: not part of the work/hobbies collections, so it does not
+// appear in any listing, but it is published and reachable at /hslu-modules.
+const title = 'HSLU MSc Applied Information & Data Science — Module Dependency Graph';
+const description =
+  'An interactive force-directed graph of the 2026 curriculum: how the modules of the HSLU MSc in Applied Information & Data Science depend on one another.';
+const date = new Date('2026-06-27');
+---
+
+<ArticleLayout title={title} description={description} date={date}>
+  <p>
+    The HSLU MSc in Applied Information &amp; Data Science is built from a web of
+    required and elective modules, many of which depend on others being taken
+    first. The graph below lays out that structure: each circle is a module,
+    sized by its ECTS credits and coloured by its recommended semester. An arrow
+    runs from a prerequisite to the module that needs it — solid when all listed
+    prerequisites are required, dashed when any one of several alternatives will do.
+  </p>
+
+  <ModuleGraph />
+
+  <p>
+    Hover or tap a module to read its details — prerequisites, learning
+    objectives and content. Drag nodes to untangle the layout, scroll to zoom,
+    and drag the background to pan.
+  </p>
+</ArticleLayout>

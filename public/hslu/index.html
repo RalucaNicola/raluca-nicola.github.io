@@ -10,10 +10,17 @@
   * { box-sizing: border-box; }
   html, body { margin:0; height:100%; font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; color:var(--ink); background:var(--bg); }
   #app { display:flex; height:100vh; }
-  #graph { flex:1; position:relative; }
+  #graph { flex:1; position:relative; min-height:0; }
   svg { width:100%; height:100%; display:block; cursor:grab; }
   svg:active { cursor:grabbing; }
-  aside { width:320px; border-left:1px solid var(--border); background:var(--panel); padding:18px 18px 28px; overflow-y:auto; }
+  aside { width:320px; flex:none; border-left:1px solid var(--border); background:var(--panel); padding:18px 18px 28px; overflow-y:auto; }
+
+  /* On narrow screens, stack the graph on top and move the menu to the bottom */
+  @media (max-width: 720px) {
+    #app { flex-direction:column; }
+    #graph { flex:1 1 55vh; }
+    aside { width:100%; height:45vh; flex:none; border-left:none; border-top:1px solid var(--border); }
+  }
   h1 { font-size:15px; margin:0 0 4px; line-height:1.3; }
   .sub { font-size:12px; color:var(--muted); margin:0 0 16px; }
   h2 { font-size:12px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin:18px 0 8px; }

@@ -12,7 +12,9 @@ interface Props {
   tags?: string[];
 }
 
-const { href, title, description, date, cover, coverAlt, tags = [] } = Astro.props;
+const { href, title, description, date, cover, coverAlt, section, tags = [] } = Astro.props;
+// Work tiles show only the title and description; the date and tags are omitted.
+const showMeta = section !== 'work';
 const dateLabel = date.toLocaleDateString('en-US', { year: '2-digit', month: 'short' });
 const category = tags.join(' · ');
 const base = import.meta.env.BASE_URL;
@@ -22,53 +24,46 @@ const coverSrc = cover
 ---
 
 <a class="item" href={href} aria-label={title}>
-  <div class="thumb">
-    {coverSrc ? (
-      <img class="layer" src={coverSrc} alt={coverAlt ?? ''} loading="lazy" decoding="async" />
-    ) : (
-      <div class="layer cover-fallback" aria-hidden="true">{tags[0] ?? ''}</div>
+  {coverSrc ? (
+    <img class="layer" src={coverSrc} alt={coverAlt ?? ''} loading="lazy" decoding="async" />
+  ) : (
+    <div class="layer cover-fallback" aria-hidden="true">{tags[0] ?? ''}</div>
+  )}
+  <div class="overlay">
+    {showMeta && (
+      <div class="meta">
+        <time datetime={date.toISOString()}>{dateLabel}</time>
+        {category && <span> · {category}</span>}
+      </div>
     )}
-  </div>
-  <div class="info">
-    <time class="date" datetime={date.toISOString()}>{dateLabel}</time>
     <h3>{title}</h3>
+    <p class="desc">{description}</p>
   </div>
-  {category && <div class="cat">{category}</div>}
-  <p class="desc">{description}</p>
 </a>
 
 <style>
   .item {
     display: block;
+    position: relative;
+    height: 100%;
+    overflow: hidden;
     text-decoration: none;
     color: inherit;
+    background: var(--accent-soft);
   }
   .item:hover { text-decoration: none; }
 
-  .thumb {
-    aspect-ratio: 4 / 3;
-    position: relative;
-    overflow: hidden;
-    background: var(--accent-soft);
-  }
-  /* grayscale paper that drinks in color on hover */
-  .thumb .layer {
+  .layer {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
     object-fit: cover;
-    filter: contrast(0.92) brightness(0.8) grayscale(0.4);
     transition:
-      filter 0.7s cubic-bezier(0.2, 0.6, 0.2, 1),
+      filter 0.5s ease,
       transform 0.7s cubic-bezier(0.2, 0.6, 0.2, 1);
     transform: scale(1.01);
   }
-  .item:hover .thumb .layer {
-    filter: grayscale(0) contrast(1) brightness(1);
-    transform: scale(1.04);
-  }
-  .item:hover .thumb::after { opacity: 1; }
 
   .cover-fallback {
     display: grid;
@@ -77,58 +72,67 @@ const coverSrc = cover
     color: var(--accent);
     font-size: 1.1rem;
     letter-spacing: 0.04em;
-    filter: none;
   }
 
-  .info {
+  /* title and description stay hidden until the tile is hovered or focused */
+  .overlay {
+    position: absolute;
+    inset: 0;
     display: flex;
-    align-items: baseline;
-    gap: 14px;
-    margin-top: 18px;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 6px;
+    padding: 18px 20px;
+    color: #fff;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0.15) 70%);
+    opacity: 0;
+    transition: opacity 0.4s ease;
   }
-  .info .date {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-    min-width: 56px;
-    letter-spacing: 0.02em;
+  .item:hover .overlay,
+  .item:focus-visible .overlay { opacity: 1; }
+  .item:hover .layer,
+  .item:focus-visible .layer {
+    filter: grayscale(1);
+    transform: scale(1.04);
+  }
+
+  .meta {
+    font-size: 0.6875rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    opacity: 0.85;
     font-variant-numeric: tabular-nums;
   }
-  .info h3 {
+  h3 {
     font-family: var(--font-serif);
-    font-size: 1.25rem;
+    font-size: 1.375rem;
     font-weight: 400;
     letter-spacing: -0.01em;
     line-height: 1.2;
     margin: 0;
-  }
-  .cat {
-    font-size: 0.6875rem;
-    color: var(--text-muted);
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    margin: 9px 0 0 70px;
+    color: #fff;
   }
   .desc {
     font-size: 0.875rem;
-    color: var(--text-muted);
-    margin: 0 0 0 70px;
-    max-width: 340px;
-    max-height: 0;
-    opacity: 0;
+    line-height: 1.45;
+    margin: 0;
+    max-width: 440px;
+    opacity: 0.9;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
     overflow: hidden;
-    transition: max-height 0.4s ease, opacity 0.4s ease, margin-top 0.4s ease;
-  }
-  .item:hover .desc {
-    max-height: 80px;
-    opacity: 1;
-    margin-top: 8px;
   }
 
+  /* touch screens can't hover: keep the title visible, in colour */
+  @media (hover: none) {
+    .overlay { opacity: 1; }
+    .item:hover .layer { filter: none; }
+  }
   @media (max-width: 680px) {
-    .thumb .layer { filter: grayscale(0); }
-    .desc { max-height: none; opacity: 1; margin-top: 8px; }
+    .item { aspect-ratio: 4 / 3; height: auto; }
   }
   @media (prefers-reduced-motion: reduce) {
-    .thumb .layer { transition: none; }
+    .layer, .overlay { transition: none; }
   }
 </style>

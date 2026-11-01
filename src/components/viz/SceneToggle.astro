@@ -1,0 +1,99 @@
+---
+// WebScene viewer with a toggle that crossfades between several web scenes.
+// All scenes are stacked in the same frame; only the active one is visible.
+interface Scene {
+  label: string;
+  itemId: string;
+}
+
+interface Props {
+  scenes: Scene[];
+  caption?: string;
+}
+
+const { scenes, caption } = Astro.props;
+---
+
+<link rel="stylesheet" href="https://js.arcgis.com/5.1/esri/themes/light/main.css" />
+<script is:inline type="module" src="https://js.arcgis.com/5.1/"></script>
+
+<figure class="viz-wide scene-toggle">
+  <div class="scene-frame">
+    {scenes.map((scene, i) => (
+      <arcgis-scene
+        item-id={scene.itemId}
+        class:list={{ active: i === 0 }}
+        inert={i === 0 ? undefined : ''}
+      >
+        <arcgis-zoom slot="top-right"></arcgis-zoom>
+        <arcgis-navigation-toggle slot="top-right"></arcgis-navigation-toggle>
+        <arcgis-compass slot="top-right"></arcgis-compass>
+      </arcgis-scene>
+    ))}
+    <calcite-segmented-control class="scene-switch" label="Map style" scale="m" appearance="solid">
+      {scenes.map((scene, i) => (
+        <calcite-segmented-control-item value={scene.label} data-index={i} checked={i === 0 ? '' : undefined}>
+          {scene.label}
+        </calcite-segmented-control-item>
+      ))}
+    </calcite-segmented-control>
+  </div>
+  {caption && <figcaption>{caption}</figcaption>}
+</figure>
+
+<script>
+  for (const figure of document.querySelectorAll<HTMLElement>('.scene-toggle')) {
+    const views = [...figure.querySelectorAll('arcgis-scene')] as any[];
+    const toggle = figure.querySelector('calcite-segmented-control') as any;
+    let current = views[0];
+
+    toggle?.addEventListener('calciteSegmentedControlChange', () => {
+      const next = views[Number(toggle.selectedItem.dataset.index)];
+      if (next === current) return;
+      // Match the incoming view to the current camera so the fade lines up.
+      if (current.view?.ready && next.view?.ready) {
+        next.view.camera = current.view.camera.clone();
+      }
+      current.classList.remove('active');
+      current.inert = true;
+      next.classList.add('active');
+      next.inert = false;
+      current = next;
+    });
+  }
+</script>
+
+<style>
+  .scene-toggle {
+    margin: 2rem auto;
+  }
+  .scene-frame {
+    position: relative;
+    height: min(75vh, 720px);
+    min-height: 480px;
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--accent-soft);
+  }
+  arcgis-scene {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.8s ease;
+  }
+  arcgis-scene.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    arcgis-scene { transition: none; }
+  }
+  .scene-switch {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    z-index: 1;
+    box-shadow: 0 1px 4px rgb(0 0 0 / 25%);
+  }
+</style>

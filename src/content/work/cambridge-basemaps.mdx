@@ -1,0 +1,23 @@
+---
+title: "Cambridge - basemaps"
+description: "Creating basemaps for the city of Cambridge using open data."
+date: 2023-07-01
+cover: "/articles/cambridge-basemaps/cover.webp"
+coverAlt: "Basemaps for the city of Cambridge"
+tags: ["Data visualization", "Maps"]
+featured: true
+---
+
+import SceneToggle from '~/components/viz/SceneToggle.astro';
+
+While I was working with the GIS team at the city of Cambridge for the Esri User Conference 
+I discovered that they have an amazing open data portal, so I used it to create a several 
+basemaps of the city: a watercolor version and a schematic one.
+
+<SceneToggle
+  scenes={[
+    { label: 'Watercolor', itemId: '800c3f6d5d424b33b6d13d8c53969115' },
+    { label: 'Basemap', itemId: 'bd3b249518684a46b9680095bb258b34' },
+  ]}
+  caption="Cambridge in 3D: switch between the watercolor style and the regular basemap."
+/>
